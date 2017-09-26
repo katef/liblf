@@ -171,8 +171,6 @@ lf_parse(struct lf_config *conf, const char *fmt,
 					ERR(p, e, TOO_MANY_STATUSES);
 				}
 
-				fprintf(stderr, "status: %u\n", u);
-
 				status_storage[pred.count] = u;
 				pred.count++;
 
@@ -206,9 +204,6 @@ lf_parse(struct lf_config *conf, const char *fmt,
 				if (name.b != NULL) {
 					ERR(p, e, NAME_ALREADY_SET);
 				}
-
-				/* TODO: maybe for appropriate statuses only */
-				fprintf(stderr, "name: '%.*s'\n", (int) (e - p), p);
 
 				name.b = p;
 				name.e = e;
@@ -248,8 +243,6 @@ lf_parse(struct lf_config *conf, const char *fmt,
 					ERR(redirectp - 1, redirectp, TOO_MANY_REDIRECT_FLAGS);
 				}
 			}
-
-			fprintf(stderr, "redirect: %d\n", redirect);
 
 			switch (*p) {
 			case 't':
@@ -374,8 +367,6 @@ lf_parse(struct lf_config *conf, const char *fmt,
 				} else {
 					when = LF_WHEN_BEGIN;
 				}
-
-				fprintf(stderr, "when: %d\n", when);
 
 				/*
 				 * LogFormat:
