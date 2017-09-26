@@ -72,24 +72,22 @@ enum lf_when {
 	LF_WHEN_END
 };
 
-struct lf_modifiers {
-	enum lf_redirect redirect;
-
+struct lf_pred {
 	unsigned neg :1;
-	size_t status_count;
+	size_t count;
 	unsigned *status; /* array, sorted */
 };
 
-typedef int (lf_bool    )(int v);
+typedef int (lf_bool    )(const struct lf_pred *pred, int v);
 typedef int (lf_char    )(char c);
-typedef int (lf_ip      )(enum lf_ip ip);
-typedef int (lf_simple  )(void);
-typedef int (lf_rtime   )(enum lf_rtime unit);
-typedef int (lf_name    )(const char *name);
-typedef int (lf_port    )(enum lf_port);
-typedef int (lf_id      )(enum lf_id);
-typedef int (lf_strftime)(enum lf_when when, const char *fmt);
-typedef int (lf_fractime)(enum lf_when when, enum lf_rtime unit);
+typedef int (lf_ip      )(const struct lf_pred *pred, enum lf_ip ip);
+typedef int (lf_simple  )(const struct lf_pred *pred);
+typedef int (lf_rtime   )(const struct lf_pred *pred, enum lf_rtime unit);
+typedef int (lf_name    )(const struct lf_pred *pred, const char *name);
+typedef int (lf_port    )(const struct lf_pred *pred, enum lf_port);
+typedef int (lf_id      )(const struct lf_pred *pred, enum lf_id);
+typedef int (lf_strftime)(const struct lf_pred *pred, enum lf_when when, const char *fmt);
+typedef int (lf_fractime)(const struct lf_pred *pred, enum lf_when when, enum lf_rtime unit);
 
 /*
  * https://httpd.apache.org/docs/current/mod/mod_log_config.html#logformat
