@@ -15,6 +15,7 @@ BUILD   ?= build
 PREFIX  ?= /usr/local
 
 # layout
+SUBDIR += src
 SUBDIR += pc
 
 INCDIR += include
