@@ -15,6 +15,8 @@ BUILD   ?= build
 PREFIX  ?= /usr/local
 
 # layout
+SUBDIR += examples/lfdump
+SUBDIR += examples
 SUBDIR += src
 SUBDIR += pc
 
