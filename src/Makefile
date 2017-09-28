@@ -1,8 +1,9 @@
 .include "../share/mk/top.mk"
 
-SRC += src/lf.c
+SRC        += src/lf.c
 
-LIB += liblf
+LIB        += liblf
+SYMS.liblf += src/liblf.syms
 
 .for src in ${SRC:Msrc/*.c}
 ${BUILD}/lib/liblf.o:    ${BUILD}/${src:R}.o
