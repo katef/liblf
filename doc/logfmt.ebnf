@@ -1,0 +1,46 @@
+(*
+ * Grammar for Apache's LogFormat as implemented by liblf
+ * https://httpd.apache.org/docs/current/mod/mod_log_config.html#logformat
+ * EBNF, ISO/IEC 14977:1996(E)
+ * Terminals are uppercase, as defined per ABNF (RFC 5234 B.1 Core Rules)
+ *)
+
+logfmt = { literal | directive | "%%" }
+	;
+
+(* XXX: OCTET - ( "\" | "%" ) *)
+literal =
+	OCTET
+	| "\t" | "\n" | "\'" | '\"' | "\\"
+	;
+
+(* XXX: OCTET - "}" *)
+name = { OCTET }
+	;
+
+name-specifier = "C" | "e" | "i" | "n" | "o" | "^ti" | "^to"
+	| custom-specifier
+	;
+
+nameless-specifier =
+	"A" | "a" | "B" | "b" | "D" | "f" | "h" | "H" | "I" | "k" | "l" | "L"
+	| "m" | "O" | "p" | "P" | "S" | "T" | "t" | "U" | "u" | "V" | "v" | "X"
+	| custom-specifier
+	;
+
+custom-specifier =
+	ALPHA
+	;
+
+directive =
+	"%", [ predicate ], [ "<" | ">" ],
+		( "{", name, "}", ( name-specifier )
+		| nameless-specifier )
+	;
+
+status = DIGIT, { DIGIT } ;
+
+predicate =
+	[ "!" ], [ status, { ",", status } ]
+	;
+
