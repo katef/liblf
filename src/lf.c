@@ -40,13 +40,16 @@ uintcmp(const void *a, const void *b)
 }
 
 static int
-nameeq(const char *b, const char *e, const char *s)
+nameeq(const char *p, size_t n, const char *s)
 {
-	assert(b != NULL);
-	assert(e != NULL);
+	assert(p != NULL);
 	assert(s != NULL);
 
-	return strncmp(s, b, e - b) == 0 && s[e - b] == '\0';
+	if (strlen(s) != n) {
+		return 0;
+	}
+
+	return 0 == memcmp(p, s, n);
 }
 
 static unsigned
@@ -118,12 +121,11 @@ lf_parse(struct lf_config *conf, const char *fmt,
 		int r;
 
 		struct {
-			const char *b;
-			const char *e;
+			const char *p;
+			size_t n;
 		} name;
 
-		name.b = NULL;
-		name.e = NULL;
+		name.p = NULL;
 
 		pred.neg    = 0;
 		pred.count  = 0;
@@ -215,27 +217,27 @@ lf_parse(struct lf_config *conf, const char *fmt,
 			}
 
 			if (*p == '{') {
-				const char *e;
+				size_t n;
 
 				p++;
 
-				e = p + strcspn(p, "}");
-				if (*e != '}') {
-					ERR(p, e, MISSING_CLOSING_BRACE);
+				n = strcspn(p, "}");
+				if (p[n] != '}') {
+					ERR(p, p + n, MISSING_CLOSING_BRACE);
 				}
 
-				if (e == p) {
-					ERR(p - 1, e + 1, EMPTY_NAME);
+				if (n == 0) {
+					ERR(p - 1, p + n + 1, EMPTY_NAME);
 				}
 
-				if (name.b != NULL) {
-					ERR(p, e, NAME_ALREADY_SET);
+				if (name.p != NULL) {
+					ERR(p, p + n, NAME_ALREADY_SET);
 				}
 
-				name.b = p;
-				name.e = e;
+				name.p = p;
+				name.n = n;
 
-				p = e;
+				p += n;
 
 				p++;
 			}
@@ -278,7 +280,7 @@ lf_parse(struct lf_config *conf, const char *fmt,
 				 * "Time the request was received, in the format
 				 * [18/Sep/2011:19:18:28 -0400]"
 				 */
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					fmt = "[%d/%b/%Y:%T %z]";
 					break;
 				}
@@ -293,16 +295,16 @@ lf_parse(struct lf_config *conf, const char *fmt,
 			case 'n':
 			case 'o':
 			case '^':
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					ERR(p - 1, p + 1, MISSING_NAME);
 				}
 
-				if ((size_t) (name.e - name.b) > conf->bufsz - 1) {
+				if (name.n > conf->bufsz - 1) {
 					ERR(p - 1, p + 1, NAME_OVERFLOW);
 				}
 
-				memcpy(conf->buf, name.b, name.e - name.b);
-				conf->buf[name.e - name.b] = '\0';
+				memcpy(conf->buf, name.p, name.n);
+				conf->buf[name.n] = '\0';
 
 				break;
 
@@ -337,40 +339,40 @@ lf_parse(struct lf_config *conf, const char *fmt,
 			case 'o': r = conf->reply_header(&pred, redirect, conf->buf); break;
 
 			case 'a':
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					r = conf->ip(&pred, redirect, LF_IP_CLIENT);
-				} else if (nameeq(name.b, name.e, "c")) {
+				} else if (nameeq(name.p, name.n, "c")) {
 					r = conf->ip(&pred, redirect, LF_IP_PEER);
 				} else {
-					ERR(name.b, name.e, UNRECOGNISED_IP_TYPE);
+					ERR(name.p, name.p + name.n, UNRECOGNISED_IP_TYPE);
 				}
 				break;
 
 			case 'p':
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					r = conf->server_port(&pred, redirect, LF_PORT_CANONICAL);
-				} else if (nameeq(name.b, name.e, "canonical")) {
+				} else if (nameeq(name.p, name.n, "canonical")) {
 					r = conf->ip(&pred, redirect, LF_PORT_CANONICAL);
-				} else if (nameeq(name.b, name.e, "local")) {
+				} else if (nameeq(name.p, name.n, "local")) {
 					r = conf->ip(&pred, redirect, LF_PORT_LOCAL);
-				} else if (nameeq(name.b, name.e, "remote")) {
+				} else if (nameeq(name.p, name.n, "remote")) {
 					r = conf->ip(&pred, redirect, LF_PORT_REMOTE);
 				} else {
-					ERR(name.b, name.e, UNRECOGNISED_PORT_TYPE);
+					ERR(name.p, name.p + name.n, UNRECOGNISED_PORT_TYPE);
 				}
 				break;
 
 			case 'P':
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					r = conf->server_port(&pred, redirect, LF_ID_PID);
-				} else if (nameeq(name.b, name.e, "pid")) {
+				} else if (nameeq(name.p, name.n, "pid")) {
 					r = conf->ip(&pred, redirect, LF_ID_PID);
-				} else if (nameeq(name.b, name.e, "tid")) {
+				} else if (nameeq(name.p, name.n, "tid")) {
 					r = conf->ip(&pred, redirect, LF_ID_TID);
-				} else if (nameeq(name.b, name.e, "hextid")) {
+				} else if (nameeq(name.p, name.n, "hextid")) {
 					r = conf->ip(&pred, redirect, LF_ID_HEXTID);
 				} else {
-					ERR(name.b, name.e, UNRECOGNISED_ID_TYPE);
+					ERR(name.p, name.p + name.n, UNRECOGNISED_ID_TYPE);
 				}
 				break;
 
@@ -421,16 +423,16 @@ lf_parse(struct lf_config *conf, const char *fmt,
 			}
 
 			case 'T':
-				if (name.b == NULL) {
+				if (name.p == NULL) {
 					r = conf->time_taken(&pred, redirect, LF_RTIME_S);
-				} else if (nameeq(name.b, name.e, "ms")) {
+				} else if (nameeq(name.p, name.n, "ms")) {
 					r = conf->time_taken(&pred, redirect, LF_RTIME_MS);
-				} else if (nameeq(name.b, name.e, "us")) {
+				} else if (nameeq(name.p, name.n, "us")) {
 					r = conf->time_taken(&pred, redirect, LF_RTIME_US);
-				} else if (nameeq(name.b, name.e, "s")) {
+				} else if (nameeq(name.p, name.n, "s")) {
 					r = conf->time_taken(&pred, redirect, LF_RTIME_S);
 				} else {
-					ERR(name.b, name.e, UNRECOGNISED_RTIME_UNIT);
+					ERR(name.p, name.p + name.n, UNRECOGNISED_RTIME_UNIT);
 				}
 				break;
 
