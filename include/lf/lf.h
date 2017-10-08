@@ -147,6 +147,9 @@ int
 lf_parse(struct lf_config *conf, const char *fmt,
 	struct lf_err *ep);
 
+const char *
+lf_strerror(enum lf_errno errnum);
+
 /*
  * Popular log formats, for your convenience.
  */

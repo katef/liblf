@@ -483,7 +483,7 @@ main(int argc, char *argv[])
 
 	if (!lf_parse(&conf, argv[1], &err)) {
 		assert(err.e >= err.p);
-		printf("error: %d\n", err.errnum); /* XXX */
+		printf("error: %s\n", lf_strerror(err.errnum)); /* XXX */
 		return 1;
 	}
 

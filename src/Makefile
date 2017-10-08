@@ -1,6 +1,7 @@
 .include "../share/mk/top.mk"
 
 SRC        += src/lf.c
+SRC        += src/strerror.c
 
 LIB        += liblf
 SYMS.liblf += src/liblf.syms
