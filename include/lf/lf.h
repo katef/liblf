@@ -78,16 +78,16 @@ struct lf_pred {
 	unsigned *status; /* array, sorted */
 };
 
-typedef int (lf_bool    )(const struct lf_pred *pred, enum lf_redirect redirect, int v);
-typedef int (lf_char    )(char c);
-typedef int (lf_ip      )(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_ip ip);
-typedef int (lf_simple  )(const struct lf_pred *pred, enum lf_redirect redirect);
-typedef int (lf_rtime   )(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_rtime unit);
-typedef int (lf_name    )(const struct lf_pred *pred, enum lf_redirect redirect, const char *name);
-typedef int (lf_port    )(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_port);
-typedef int (lf_id      )(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_id);
-typedef int (lf_strftime)(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, const char *fmt);
-typedef int (lf_fractime)(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, enum lf_rtime unit);
+typedef int (lf_bool    )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, int v);
+typedef int (lf_char    )(void *opaque, char c);
+typedef int (lf_ip      )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_ip ip);
+typedef int (lf_simple  )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect);
+typedef int (lf_rtime   )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_rtime unit);
+typedef int (lf_name    )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, const char *name);
+typedef int (lf_port    )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_port);
+typedef int (lf_id      )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_id);
+typedef int (lf_strftime)(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, const char *fmt);
+typedef int (lf_fractime)(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, enum lf_rtime unit);
 
 /*
  * https://httpd.apache.org/docs/current/mod/mod_log_config.html#logformat
@@ -144,7 +144,7 @@ struct lf_config {
 };
 
 int
-lf_parse(struct lf_config *conf, const char *fmt,
+lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 	struct lf_err *ep);
 
 const char *

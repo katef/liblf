@@ -50,16 +50,21 @@ print_redirect(enum lf_redirect redirect)
 }
 
 static int
-print_literal(char c)
+print_literal(void *opaque, char c)
 {
+	assert(opaque == NULL);
+
 	printf("literal: \\x%02X\n", (unsigned char) c);
 	return 1;
 }
 
 static int
-print_ip(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_ip ip)
+print_ip(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_ip ip)
 {
 	const char *s;
+
+	assert(opaque == NULL);
 
 	switch (ip) {
 	case LF_IP_CLIENT: s = "client"; break;
@@ -78,8 +83,11 @@ print_ip(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_ip ip)
 }
 
 static int
-print_resp_size(const struct lf_pred *pred, enum lf_redirect redirect)
+print_resp_size(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("resp_size\n");
@@ -87,8 +95,11 @@ print_resp_size(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_resp_size_clf(const struct lf_pred *pred, enum lf_redirect redirect)
+print_resp_size_clf(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("resp_size_clf\n");
@@ -96,8 +107,11 @@ print_resp_size_clf(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_cookie(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_req_cookie(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_cookie: %s\n", name);
@@ -105,8 +119,11 @@ print_req_cookie(const struct lf_pred *pred, enum lf_redirect redirect, const ch
 }
 
 static int
-print_env_var(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_env_var(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("env_var: %s\n", name);
@@ -114,8 +131,11 @@ print_env_var(const struct lf_pred *pred, enum lf_redirect redirect, const char 
 }
 
 static int
-print_filename(const struct lf_pred *pred, enum lf_redirect redirect)
+print_filename(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("filename\n");
@@ -123,8 +143,11 @@ print_filename(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_remote_hostname(const struct lf_pred *pred, enum lf_redirect redirect, int hostname_lookups)
+print_remote_hostname(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, int hostname_lookups)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("remote_hostname (hostname_lookups=%s)\n",
@@ -133,8 +156,11 @@ print_remote_hostname(const struct lf_pred *pred, enum lf_redirect redirect, int
 }
 
 static int
-print_req_protocol(const struct lf_pred *pred, enum lf_redirect redirect)
+print_req_protocol(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_header\n");
@@ -142,8 +168,11 @@ print_req_protocol(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_header(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_req_header(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_header: %s\n", name);
@@ -151,8 +180,11 @@ print_req_header(const struct lf_pred *pred, enum lf_redirect redirect, const ch
 }
 
 static int
-print_keepalive_reqs(const struct lf_pred *pred, enum lf_redirect redirect)
+print_keepalive_reqs(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("keepalive_reqs\n");
@@ -160,8 +192,11 @@ print_keepalive_reqs(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_remote_logname(const struct lf_pred *pred, enum lf_redirect redirect)
+print_remote_logname(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("remote_logname\n");
@@ -169,8 +204,11 @@ print_remote_logname(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_logid(const struct lf_pred *pred, enum lf_redirect redirect)
+print_req_logid(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_logid\n");
@@ -178,8 +216,11 @@ print_req_logid(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_method(const struct lf_pred *pred, enum lf_redirect redirect)
+print_req_method(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_method\n");
@@ -187,8 +228,11 @@ print_req_method(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_note(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_note(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("note: %s\n", name);
@@ -196,8 +240,11 @@ print_note(const struct lf_pred *pred, enum lf_redirect redirect, const char *na
 }
 
 static int
-print_reply_header(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_reply_header(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("reply_header: %s\n", name);
@@ -205,9 +252,12 @@ print_reply_header(const struct lf_pred *pred, enum lf_redirect redirect, const 
 }
 
 static int
-print_server_port(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_port port)
+print_server_port(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_port port)
 {
 	const char *s;
+
+	assert(opaque == NULL);
 
 	switch (port) {
 	case LF_PORT_CANONICAL: s = "canonical"; break;
@@ -226,9 +276,12 @@ print_server_port(const struct lf_pred *pred, enum lf_redirect redirect, enum lf
 }
 
 static int
-print_id(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_id id)
+print_id(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_id id)
 {
 	const char *s;
+
+	assert(opaque == NULL);
 
 	switch (id) {
 	case LF_ID_PID:    s = "pid";    break;
@@ -247,8 +300,11 @@ print_id(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_id id)
 }
 
 static int
-print_query_string(const struct lf_pred *pred, enum lf_redirect redirect)
+print_query_string(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("query_string\n");
@@ -256,8 +312,11 @@ print_query_string(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_first_line(const struct lf_pred *pred, enum lf_redirect redirect)
+print_req_first_line(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_first_line\n");
@@ -265,8 +324,11 @@ print_req_first_line(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_resp_handler(const struct lf_pred *pred, enum lf_redirect redirect)
+print_resp_handler(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("resp_handler\n");
@@ -274,8 +336,11 @@ print_resp_handler(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_status(const struct lf_pred *pred, enum lf_redirect redirect)
+print_status(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("status\n");
@@ -283,8 +348,11 @@ print_status(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_strftime(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, const char *fmt)
+print_strftime(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_when when, const char *fmt)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("strftime: (when=%d, fmt=%s)\n", when, fmt);
@@ -292,9 +360,12 @@ print_strftime(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_wh
 }
 
 static int
-print_time_frac(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, enum lf_rtime unit)
+print_time_frac(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_when when, enum lf_rtime unit)
 {
 	const char *s;
+
+	assert(opaque == NULL);
 
 	switch (unit) {
 	case LF_RTIME_MS_FRAC: s = "%ms"; break;
@@ -315,9 +386,12 @@ print_time_frac(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_w
 }
 
 static int
-print_time_taken(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_rtime unit)
+print_time_taken(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, enum lf_rtime unit)
 {
 	const char *s;
+
+	assert(opaque == NULL);
 
 	switch (unit) {
 	case LF_RTIME_MS_FRAC:
@@ -342,8 +416,11 @@ print_time_taken(const struct lf_pred *pred, enum lf_redirect redirect, enum lf_
 }
 
 static int
-print_remote_user(const struct lf_pred *pred, enum lf_redirect redirect)
+print_remote_user(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("remote_user\n");
@@ -351,8 +428,11 @@ print_remote_user(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_url_path(const struct lf_pred *pred, enum lf_redirect redirect)
+print_url_path(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("url_path\n");
@@ -360,8 +440,11 @@ print_url_path(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_server_name(const struct lf_pred *pred, enum lf_redirect redirect, int use_canonical_name)
+print_server_name(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, int use_canonical_name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("server_name: use_canonical_name=%s\n",
@@ -370,8 +453,11 @@ print_server_name(const struct lf_pred *pred, enum lf_redirect redirect, int use
 }
 
 static int
-print_conn_status(const struct lf_pred *pred, enum lf_redirect redirect)
+print_conn_status(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("conn_status\n");
@@ -379,8 +465,11 @@ print_conn_status(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_bytes_recv(const struct lf_pred *pred, enum lf_redirect redirect)
+print_bytes_recv(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("bytes_recv\n");
@@ -388,8 +477,11 @@ print_bytes_recv(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_bytes_sent(const struct lf_pred *pred, enum lf_redirect redirect)
+print_bytes_sent(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("bytes_sent\n");
@@ -397,8 +489,11 @@ print_bytes_sent(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_bytes_xfer(const struct lf_pred *pred, enum lf_redirect redirect)
+print_bytes_xfer(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("bytes_xfer\n");
@@ -406,8 +501,11 @@ print_bytes_xfer(const struct lf_pred *pred, enum lf_redirect redirect)
 }
 
 static int
-print_req_trailer(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_req_trailer(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("req_trailer: %s\n", name);
@@ -415,8 +513,11 @@ print_req_trailer(const struct lf_pred *pred, enum lf_redirect redirect, const c
 }
 
 static int
-print_resp_trailer(const struct lf_pred *pred, enum lf_redirect redirect, const char *name)
+print_resp_trailer(void *opaque, const struct lf_pred *pred,
+	enum lf_redirect redirect, const char *name)
 {
+	assert(opaque == NULL);
+
 	print_pred(pred);
 	print_redirect(redirect);
 	printf("resp_trailer: %s\n", name);
@@ -432,10 +533,6 @@ main(int argc, char *argv[])
 
 	(void) argc;
 	(void) argv; /* TODO */
-
-/* TODO:
-	conf.opaque    = NULL;
-*/
 
 	conf.keep_alive         = 0;
 	conf.hostname_lookups   = 0;
@@ -481,7 +578,7 @@ main(int argc, char *argv[])
 	conf.req_trailer        = print_req_trailer;
 	conf.resp_trailer       = print_resp_trailer;
 
-	if (!lf_parse(&conf, argv[1], &err)) {
+	if (!lf_parse(&conf, NULL, argv[1], &err)) {
 		assert(err.e >= err.p);
 		printf("error: %s\n", lf_strerror(err.errnum)); /* XXX */
 		return 1;
