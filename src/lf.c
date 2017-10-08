@@ -74,6 +74,31 @@ parse_status(const char *p, const char **e)
 	return u;
 }
 
+static void
+uniq(unsigned a[], size_t *count)
+{
+	size_t i, j;
+
+	assert(count != NULL);
+
+	if (*count <= 1) {
+		return;
+	}
+
+	j = 0;
+
+	for (i = 1; i < *count; i++) {
+		if (a[j] == a[i]) {
+			continue;
+		}
+
+		j++;
+		a[j] = a[i];
+	}
+
+	*count = j + 1;
+}
+
 int
 lf_parse(struct lf_config *conf, const char *fmt,
 	struct lf_err *ep)
@@ -179,6 +204,8 @@ lf_parse(struct lf_config *conf, const char *fmt,
 			if (pred.count > 0) {
 				qsort(pred.status, pred.count, sizeof *pred.status,	uintcmp);
 			}
+
+			uniq(pred.status, &pred.count);
 
 			if (*p == '<' || *p == '>') {
 				redirectp = p;
