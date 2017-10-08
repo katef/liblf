@@ -529,7 +529,6 @@ main(int argc, char *argv[])
 {
 	struct lf_config conf;
 	struct lf_err err;
-	char buf[128];
 
 	(void) argc;
 	(void) argv; /* TODO */
@@ -538,9 +537,6 @@ main(int argc, char *argv[])
 	conf.hostname_lookups   = 0;
 	conf.identity_check     = 0;
 	conf.use_canonical_name = 0;
-
-	conf.buf   = buf;
-	conf.bufsz = sizeof buf;
 
 	conf.literal            = print_literal;
 

@@ -98,13 +98,6 @@ struct lf_config {
 	unsigned identity_check     :1; /* TODO: by callback */
 	unsigned use_canonical_name :1;
 
-	/*
-	 * User-supplied storage for null-terminated strings
-	 * for VARNAME, format, etc.
-	 */
-	char *buf;
-	size_t bufsz;
-
 	lf_char     *literal;
 
 	lf_ip       *ip;                /* %a, %{c}a, %A */

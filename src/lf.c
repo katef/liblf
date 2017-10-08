@@ -112,8 +112,8 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 	assert(ep != NULL);
 
 	for (p = fmt; *p != '\0'; p++) {
-		/* XXX: expect user to point to storage instead */
-		unsigned status_storage[128]; /* arbitrary limit */
+		unsigned status[128]; /* arbitrary limit */
+		char buf[128]; /* arbitrary limit */
 
 		struct lf_pred pred;
 		enum lf_redirect redirect;
@@ -129,7 +129,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 		pred.neg    = 0;
 		pred.count  = 0;
-		pred.status = status_storage;
+		pred.status = status;
 
 		switch (*p) {
 			const char *redirectp;
@@ -194,11 +194,11 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				p = e;
 
-				if (pred.count == sizeof status_storage / sizeof *status_storage) {
+				if (pred.count == sizeof status / sizeof *status) {
 					ERR(p, e, TOO_MANY_STATUSES);
 				}
 
-				status_storage[pred.count] = u;
+				status[pred.count] = u;
 				pred.count++;
 
 			} while (*p == ',' && p++);
@@ -285,7 +285,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					break;
 				}
 
-				fmt = conf->buf;
+				fmt = buf;
 
 				/* fallthrough */
 
@@ -299,12 +299,12 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					ERR(p - 1, p + 1, MISSING_NAME);
 				}
 
-				if (name.n > conf->bufsz - 1) {
+				if (name.n > (sizeof buf) - 1) {
 					ERR(p - 1, p + 1, NAME_OVERFLOW);
 				}
 
-				memcpy(conf->buf, name.p, name.n);
-				conf->buf[name.n] = '\0';
+				memcpy(buf, name.p, name.n);
+				buf[name.n] = '\0';
 
 				break;
 
@@ -324,19 +324,19 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			case 'A': r = conf->ip(opaque, &pred, redirect, LF_IP_LOCAL);         break;
 			case 'B': r = conf->resp_size(opaque, &pred, redirect);               break;
 			case 'b': r = conf->resp_size_clf(opaque, &pred, redirect);           break;
-			case 'C': r = conf->req_cookie(opaque, &pred, redirect, conf->buf);   break;
+			case 'C': r = conf->req_cookie(opaque, &pred, redirect, buf);         break;
 			case 'D': r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_US); break;
-			case 'e': r = conf->env_var(opaque, &pred, redirect, conf->buf);      break;
+			case 'e': r = conf->env_var(opaque, &pred, redirect, buf);            break;
 			case 'f': r = conf->filename(opaque, &pred, redirect);                break;
 			case 'h': r = conf->remote_hostname(opaque, &pred, redirect, conf->hostname_lookups); break;
 			case 'H': r = conf->req_protocol(opaque, &pred, redirect);            break;
-			case 'i': r = conf->req_header(opaque, &pred, redirect, conf->buf);   break;
+			case 'i': r = conf->req_header(opaque, &pred, redirect, buf);         break;
 			case 'k': r = conf->keepalive_reqs(opaque, &pred, redirect);          break;
 			case 'l': r = conf->remote_logname(opaque, &pred, redirect);          break;
 			case 'L': r = conf->req_logid(opaque, &pred, redirect);               break;
 			case 'm': r = conf->req_method(opaque, &pred, redirect);              break;
-			case 'n': r = conf->note(opaque, &pred, redirect, conf->buf);         break;
-			case 'o': r = conf->reply_header(opaque, &pred, redirect, conf->buf); break;
+			case 'n': r = conf->note(opaque, &pred, redirect, buf);               break;
+			case 'o': r = conf->reply_header(opaque, &pred, redirect, buf);       break;
 
 			case 'a':
 				if (name.p == NULL) {
@@ -455,8 +455,8 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				p++;
 
 				switch (*p) {
-				case 'i': r = conf->req_trailer (opaque, &pred, redirect, conf->buf); break;
-				case 'o': r = conf->resp_trailer(opaque, &pred, redirect, conf->buf); break;
+				case 'i': r = conf->req_trailer (opaque, &pred, redirect, buf); break;
+				case 'o': r = conf->resp_trailer(opaque, &pred, redirect, buf); break;
 
 				default:
 					ERR(p - 3, p, UNRECOGNISED_DIRECTIVE);
