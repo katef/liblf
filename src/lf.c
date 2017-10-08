@@ -14,12 +14,14 @@
 
 #define MAX_STATUS 0xffffU /* minimum UINT_MAX */
 
-#define ERR(xp, xe, code) \
-	if (ep != NULL) { \
-		ep->errnum = LF_ERR_ ## code; \
-		ep->p = (xp); \
-		ep->e = (xe); \
-	} \
+#define ERR(xp, xe, code)                 \
+	assert((xp) != NULL && (xe) != NULL); \
+	assert((xe) >= (xp));                 \
+	if (ep != NULL) {                     \
+	    ep->errnum = LF_ERR_ ## code;     \
+	    ep->p = (xp);                     \
+	    ep->n = (xe) - ep->p;             \
+	}                                     \
 	goto error;
 
 static int

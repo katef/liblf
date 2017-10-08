@@ -575,7 +575,6 @@ main(int argc, char *argv[])
 	conf.resp_trailer       = print_resp_trailer;
 
 	if (!lf_parse(&conf, NULL, argv[1], &err)) {
-		assert(err.e >= err.p);
 		printf("error: %s\n", lf_strerror(err.errnum)); /* XXX */
 		return 1;
 	}

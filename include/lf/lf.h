@@ -33,7 +33,7 @@ enum lf_errno {
 struct lf_err {
 	enum lf_errno errnum;
 	const char *p;
-	const char *e;
+	size_t n;
 };
 
 enum lf_ip {
