@@ -575,7 +575,44 @@ main(int argc, char *argv[])
 	conf.resp_trailer       = print_resp_trailer;
 
 	if (!lf_parse(&conf, NULL, argv[1], &err)) {
-		printf("error: %s\n", lf_strerror(err.errnum)); /* XXX */
+		size_t i;
+		int r;
+
+		assert(err.p >= argv[1]);
+
+		fprintf(stderr, "error: %s", lf_strerror(err.errnum));
+
+		switch (err.errnum) {
+		case LF_ERR_UNRECOGNISED_DIRECTIVE:
+			fprintf(stderr, " '%%%c'\n", *(err.p + (*err.p == '%')));
+			break;
+
+		default:
+			fprintf(stderr, "\n");
+			break;
+		}
+
+		r = fprintf(stderr, "at %lu: ", err.p - argv[1]);
+		fprintf(stderr, "'%s'\n", argv[1]);
+
+		for (i = 0; (int) i < r + 1; i++) {
+			fprintf(stderr, "-");
+		}
+
+		for (i = 0; i < (size_t) (err.p - argv[1]); i++) {
+			fprintf(stderr, "-");
+		}
+
+		if (err.n == 0) {
+			err.n++;
+		}
+
+		for (i = 0; i < err.n; i++) {
+			fprintf(stderr, "^");
+		}
+
+		fprintf(stderr, "\n");
+
 		return 1;
 	}
 
