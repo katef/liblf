@@ -225,7 +225,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				n = strcspn(p, "}");
 				if (p[n] != '}') {
-					ERR(p, p + n, MISSING_CLOSING_BRACE);
+					ERR(p - 1, p - 1, MISSING_CLOSING_BRACE);
 				}
 
 				if (n == 0) {
