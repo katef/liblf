@@ -63,7 +63,7 @@ parse_status(const char *p, const char **e)
 
 	u = 0;
 
-	while (p != '\0' && isdigit((unsigned char) *p)) {
+	while (*p != '\0' && isdigit((unsigned char) *p)) {
 		if (u >= MAX_STATUS / 10U) {
 			u = 0;
 			break;
