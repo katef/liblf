@@ -1,0 +1,28 @@
+{
+	"name": "liblf",
+	"version": "0.0.0",
+	"description": "Apache LogFormat log format format parsing library",
+	"keywords": [
+		"apache",
+		"apache-httpd",
+		"logformat",
+		"logfmt",
+		"logfmt-parser",
+		"logs",
+		"parser",
+		"parser-library",
+		"fmtstring"
+	],
+	"license": "BSD-2-Clause",
+	"homepage": "https://github.com/katef/liblf",
+	"bugs": "https://github.com/katef/liblf/issues",
+	"repository": { "type": "git", "url": "https://github.com/katef/liblf.git" },
+	"author": "Kate F <kate@elide.org> (http://elide.org)",
+	"contributors": [
+	],
+
+	"devDependencies": {
+		"kmkf": "katef/kmkf#2f0c4e1858319fcd0b18572fb6295c92d475d8b4"
+	}
+}
+
