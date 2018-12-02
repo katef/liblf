@@ -311,7 +311,11 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				break;
 
 			default:
-				;
+				if (name.p != NULL) {
+					ERR(name.p, name.p + name.n, UNWANTED_NAME);
+				}
+
+				break;
 			}
 
 			switch (*p) {
