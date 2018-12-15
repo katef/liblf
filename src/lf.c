@@ -245,241 +245,289 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			}
 
 			/*
-			 * LogFormat:
-			 * "By default, the % directives %s, %U, %T, %D, and %r
-			 * look at the original request while all others look at
-			 * the final request."
+			 * Custom overrides are handled first, because they need to be
+			 * able to replace standard directives. So the special cases
+			 * below (for %s, %U, %T etc) will be skipped.
+			 *
+			 * The custom callback decides if the character is relevant.
 			 */
-			switch (*p) {
-			case 's':
-			case 'U':
-			case 'T':
-			case 'D':
-			case 'r': redirect = LF_REDIRECT_ORIG;  break;
-			default:  redirect = LF_REDIRECT_FINAL; break;
-			}
 
-			if (redirectp != NULL) {
-				switch (*redirectp) {
-				case '<': redirect = LF_REDIRECT_ORIG;  break;
-				case '>': redirect = LF_REDIRECT_FINAL; break;
+			if (conf->override != NULL && isalpha((unsigned char) *p) && strchr(conf->override, *p)) {
+				enum lf_errno e;
 
-				default:
-					assert(!"unreached");
+				assert(conf->custom != NULL);
+
+				r = conf->custom(conf, opaque, *p, &pred, redirect, name.p, name.n, &e);
+				if (!r) {
+					const char *xp, *xe;
+
+					/* TODO: do this per class of error; have enum contain a mask for 'token type',
+					 * for which things to point at */
+					switch (e) {
+					case LF_ERR_EMPTY_NAME:
+					case LF_ERR_UNWANTED_NAME:
+						xp = name.p;
+						xe = name.p + name.n;
+						break;
+
+					default:
+						xp = p - 1;
+						xe = p + 1;
+					}
+
+					assert(xp != NULL && xe != NULL);
+					assert(xe >= xp);
+
+					/* TODO: combine with ERR() */
+					if (ep != NULL) {
+						ep->errnum = e;
+						ep->p = xp;
+						ep->n = xe - ep->p;
+					}
+
+					goto error;
 				}
 
-				redirectp++;
+			} else {
 
-				if (*redirectp == '<' || *redirectp == '>') {
-					ERR(redirectp - 1, redirectp, TOO_MANY_REDIRECT_FLAGS);
-				}
-			}
-
-			switch (*p) {
-			case 't':
 				/*
 				 * LogFormat:
-				 * "Time the request was received, in the format
-				 * [18/Sep/2011:19:18:28 -0400]"
+				 * "By default, the % directives %s, %U, %T, %D, and %r
+				 * look at the original request while all others look at
+				 * the final request."
 				 */
-				if (name.p == NULL) {
-					fmt = "[%d/%b/%Y:%T %z]";
+				switch (*p) {
+				case 's':
+				case 'U':
+				case 'T':
+				case 'D':
+				case 'r': redirect = LF_REDIRECT_ORIG;  break;
+				default:  redirect = LF_REDIRECT_FINAL; break;
+				}
+
+				if (redirectp != NULL) {
+					switch (*redirectp) {
+					case '<': redirect = LF_REDIRECT_ORIG;  break;
+					case '>': redirect = LF_REDIRECT_FINAL; break;
+
+					default:
+						assert(!"unreached");
+					}
+
+					redirectp++;
+
+					if (*redirectp == '<' || *redirectp == '>') {
+						ERR(redirectp - 1, redirectp, TOO_MANY_REDIRECT_FLAGS);
+					}
+				}
+
+				switch (*p) {
+				case 't':
+					/*
+					 * LogFormat:
+					 * "Time the request was received, in the format
+					 * [18/Sep/2011:19:18:28 -0400]"
+					 */
+					if (name.p == NULL) {
+						fmt = "[%d/%b/%Y:%T %z]";
+						break;
+					}
+
+					fmt = buf;
+
+					/* fallthrough */
+
+				case 'C':
+				case 'e':
+				case 'i':
+				case 'n':
+				case 'o':
+				case '^':
+					if (name.p == NULL) {
+						ERR(p - 1, p + 1, MISSING_NAME);
+					}
+
+					if (name.n > (sizeof buf) - 1) {
+						ERR(p - 1, p + 1, NAME_OVERFLOW);
+					}
+
+					memcpy(buf, name.p, name.n);
+					buf[name.n] = '\0';
+
+					break;
+
+				default:
+					if (name.p != NULL) {
+						ERR(name.p, name.p + name.n, UNWANTED_NAME);
+					}
+
 					break;
 				}
 
-				fmt = buf;
-
-				/* fallthrough */
-
-			case 'C':
-			case 'e':
-			case 'i':
-			case 'n':
-			case 'o':
-			case '^':
-				if (name.p == NULL) {
-					ERR(p - 1, p + 1, MISSING_NAME);
-				}
-
-				if (name.n > (sizeof buf) - 1) {
-					ERR(p - 1, p + 1, NAME_OVERFLOW);
-				}
-
-				memcpy(buf, name.p, name.n);
-				buf[name.n] = '\0';
-
-				break;
-
-			default:
-				if (name.p != NULL) {
-					ERR(name.p, name.p + name.n, UNWANTED_NAME);
-				}
-
-				break;
-			}
-
-			switch (*p) {
-			case '\0':
-				ERR(p - 1, p, MISSING_DIRECTIVE);
-
-			case '%':
-				/* TODO: is a status list permitted here? i don't see why not */
-				r = conf->literal(opaque, '%');
-				break;
-
-			case 'A': r = conf->ip(opaque, &pred, redirect, LF_IP_LOCAL);         break;
-			case 'B': r = conf->resp_size(opaque, &pred, redirect);               break;
-			case 'b': r = conf->resp_size_clf(opaque, &pred, redirect);           break;
-			case 'C': r = conf->req_cookie(opaque, &pred, redirect, buf);         break;
-			case 'D': r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_US); break;
-			case 'e': r = conf->env_var(opaque, &pred, redirect, buf);            break;
-			case 'f': r = conf->filename(opaque, &pred, redirect);                break;
-			case 'h': r = conf->remote_hostname(opaque, &pred, redirect, conf->hostname_lookups); break;
-			case 'H': r = conf->req_protocol(opaque, &pred, redirect);            break;
-			case 'i': r = conf->req_header(opaque, &pred, redirect, buf);         break;
-			case 'k': r = conf->keepalive_reqs(opaque, &pred, redirect);          break;
-			case 'l': r = conf->remote_logname(opaque, &pred, redirect);          break;
-			case 'L': r = conf->req_logid(opaque, &pred, redirect);               break;
-			case 'm': r = conf->req_method(opaque, &pred, redirect);              break;
-			case 'n': r = conf->note(opaque, &pred, redirect, buf);               break;
-			case 'o': r = conf->reply_header(opaque, &pred, redirect, buf);       break;
-
-			case 'a':
-				if (name.p == NULL) {
-					r = conf->ip(opaque, &pred, redirect, LF_IP_CLIENT);
-				} else if (nameeq(name.p, name.n, "c")) {
-					r = conf->ip(opaque, &pred, redirect, LF_IP_PEER);
-				} else {
-					ERR(name.p, name.p + name.n, UNRECOGNISED_IP_TYPE);
-				}
-				break;
-
-			case 'p':
-				if (name.p == NULL) {
-					r = conf->server_port(opaque, &pred, redirect, LF_PORT_CANONICAL);
-				} else if (nameeq(name.p, name.n, "canonical")) {
-					r = conf->ip(opaque, &pred, redirect, LF_PORT_CANONICAL);
-				} else if (nameeq(name.p, name.n, "local")) {
-					r = conf->ip(opaque, &pred, redirect, LF_PORT_LOCAL);
-				} else if (nameeq(name.p, name.n, "remote")) {
-					r = conf->ip(opaque, &pred, redirect, LF_PORT_REMOTE);
-				} else {
-					ERR(name.p, name.p + name.n, UNRECOGNISED_PORT_TYPE);
-				}
-				break;
-
-			case 'P':
-				if (name.p == NULL) {
-					r = conf->server_port(opaque, &pred, redirect, LF_ID_PID);
-				} else if (nameeq(name.p, name.n, "pid")) {
-					r = conf->ip(opaque, &pred, redirect, LF_ID_PID);
-				} else if (nameeq(name.p, name.n, "tid")) {
-					r = conf->ip(opaque, &pred, redirect, LF_ID_TID);
-				} else if (nameeq(name.p, name.n, "hextid")) {
-					r = conf->ip(opaque, &pred, redirect, LF_ID_HEXTID);
-				} else {
-					ERR(name.p, name.p + name.n, UNRECOGNISED_ID_TYPE);
-				}
-				break;
-
-			case 't': {
-				enum lf_when when;
-
-				/*
-				 * LogFormat:
-				 * "If the format starts with begin: (default) the time
-				 * is taken at the beginning of the req processing.
-				 * If it starts with end: it is the time when the log entry
-				 * gets written, close to the end of the req processing."
-				 */
-
-				if (0 == strncmp(fmt, "begin:", strlen("begin:"))) {
-					when = LF_WHEN_BEGIN;
-					fmt += strlen("begin:");
-				} else if (0 == strncmp(fmt, "end:", strlen("end:"))) {
-					when = LF_WHEN_END;
-					fmt += strlen("end:");
-				} else {
-					when = LF_WHEN_BEGIN;
-				}
-
-				/*
-				 * LogFormat:
-				 * "In addition to the formats supported by strftime(3),
-				 * the following format tokens are supported [...]
-				 * These tokens can not be combined with each other
-				 * or strftime(3) formatting in the same format string.
-				 */
-
-				if (0 == strcmp(fmt, "sec")) {
-					r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_S);
-				} else if (0 == strcmp(fmt, "msec")) {
-					r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_MS);
-				} else if (0 == strcmp(fmt, "usec")) {
-					r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_US);
-				} else if (0 == strcmp(fmt, "msec_frac")) {
-					r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_MS_FRAC);
-				} else if (0 == strcmp(fmt, "usec_frac")) {
-					r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_US_FRAC);
-				} else {
-					r = conf->time(opaque, &pred, redirect, when, fmt);
-				}
-
-				break;
-			}
-
-			case 'T':
-				if (name.p == NULL) {
-					r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
-				} else if (nameeq(name.p, name.n, "ms")) {
-					r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_MS);
-				} else if (nameeq(name.p, name.n, "us")) {
-					r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_US);
-				} else if (nameeq(name.p, name.n, "s")) {
-					r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
-				} else {
-					ERR(name.p, name.p + name.n, UNRECOGNISED_RTIME_UNIT);
-				}
-				break;
-
-			case 'u': r = conf->remote_user(opaque, &pred, redirect);    break;
-			case 'U': r = conf->url_path(opaque, &pred, redirect);       break;
-			case 'v': r = conf->server_name(opaque, &pred, redirect, 1); break;
-			case 'V': r = conf->server_name(opaque, &pred, redirect, conf->use_canonical_name); break;
-			case 'X': r = conf->conn_status(opaque, &pred, redirect);    break;
-			case 'I': r = conf->bytes_recv(opaque, &pred, redirect);     break;
-			case 'O': r = conf->bytes_sent(opaque, &pred, redirect);     break;
-			case 'S': r = conf->bytes_xfer(opaque, &pred, redirect);     break;
-
-			case '^':
-				p++;
-
-				if (*p != 't') {
-					ERR(p - 2, p, UNRECOGNISED_DIRECTIVE);
-				}
-
-				p++;
-
 				switch (*p) {
-				case 'i': r = conf->req_trailer (opaque, &pred, redirect, buf); break;
-				case 'o': r = conf->resp_trailer(opaque, &pred, redirect, buf); break;
+				case '\0':
+					ERR(p - 1, p, MISSING_DIRECTIVE);
+
+				case '%':
+					/* TODO: is a status list permitted here? i don't see why not */
+					r = conf->literal(opaque, '%');
+					break;
+
+				case 'A': r = conf->ip(opaque, &pred, redirect, LF_IP_LOCAL);         break;
+				case 'B': r = conf->resp_size(opaque, &pred, redirect);               break;
+				case 'b': r = conf->resp_size_clf(opaque, &pred, redirect);           break;
+				case 'C': r = conf->req_cookie(opaque, &pred, redirect, buf);         break;
+				case 'D': r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_US); break;
+				case 'e': r = conf->env_var(opaque, &pred, redirect, buf);            break;
+				case 'f': r = conf->filename(opaque, &pred, redirect);                break;
+				case 'h': r = conf->remote_hostname(opaque, &pred, redirect, conf->hostname_lookups); break;
+				case 'H': r = conf->req_protocol(opaque, &pred, redirect);            break;
+				case 'i': r = conf->req_header(opaque, &pred, redirect, buf);         break;
+				case 'k': r = conf->keepalive_reqs(opaque, &pred, redirect);          break;
+				case 'l': r = conf->remote_logname(opaque, &pred, redirect);          break;
+				case 'L': r = conf->req_logid(opaque, &pred, redirect);               break;
+				case 'm': r = conf->req_method(opaque, &pred, redirect);              break;
+				case 'n': r = conf->note(opaque, &pred, redirect, buf);               break;
+				case 'o': r = conf->reply_header(opaque, &pred, redirect, buf);       break;
+
+				case 'a':
+					if (name.p == NULL) {
+						r = conf->ip(opaque, &pred, redirect, LF_IP_CLIENT);
+					} else if (nameeq(name.p, name.n, "c")) {
+						r = conf->ip(opaque, &pred, redirect, LF_IP_PEER);
+					} else {
+						ERR(name.p, name.p + name.n, UNRECOGNISED_IP_TYPE);
+					}
+					break;
+
+				case 'p':
+					if (name.p == NULL) {
+						r = conf->server_port(opaque, &pred, redirect, LF_PORT_CANONICAL);
+					} else if (nameeq(name.p, name.n, "canonical")) {
+						r = conf->ip(opaque, &pred, redirect, LF_PORT_CANONICAL);
+					} else if (nameeq(name.p, name.n, "local")) {
+						r = conf->ip(opaque, &pred, redirect, LF_PORT_LOCAL);
+					} else if (nameeq(name.p, name.n, "remote")) {
+						r = conf->ip(opaque, &pred, redirect, LF_PORT_REMOTE);
+					} else {
+						ERR(name.p, name.p + name.n, UNRECOGNISED_PORT_TYPE);
+					}
+					break;
+
+				case 'P':
+					if (name.p == NULL) {
+						r = conf->server_port(opaque, &pred, redirect, LF_ID_PID);
+					} else if (nameeq(name.p, name.n, "pid")) {
+						r = conf->ip(opaque, &pred, redirect, LF_ID_PID);
+					} else if (nameeq(name.p, name.n, "tid")) {
+						r = conf->ip(opaque, &pred, redirect, LF_ID_TID);
+					} else if (nameeq(name.p, name.n, "hextid")) {
+						r = conf->ip(opaque, &pred, redirect, LF_ID_HEXTID);
+					} else {
+						ERR(name.p, name.p + name.n, UNRECOGNISED_ID_TYPE);
+					}
+					break;
+
+				case 't': {
+					enum lf_when when;
+
+					/*
+					 * LogFormat:
+					 * "If the format starts with begin: (default) the time
+					 * is taken at the beginning of the req processing.
+					 * If it starts with end: it is the time when the log entry
+					 * gets written, close to the end of the req processing."
+					 */
+
+					if (0 == strncmp(fmt, "begin:", strlen("begin:"))) {
+						when = LF_WHEN_BEGIN;
+						fmt += strlen("begin:");
+					} else if (0 == strncmp(fmt, "end:", strlen("end:"))) {
+						when = LF_WHEN_END;
+						fmt += strlen("end:");
+					} else {
+						when = LF_WHEN_BEGIN;
+					}
+
+					/*
+					 * LogFormat:
+					 * "In addition to the formats supported by strftime(3),
+					 * the following format tokens are supported [...]
+					 * These tokens can not be combined with each other
+					 * or strftime(3) formatting in the same format string.
+					 */
+
+					if (0 == strcmp(fmt, "sec")) {
+						r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_S);
+					} else if (0 == strcmp(fmt, "msec")) {
+						r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_MS);
+					} else if (0 == strcmp(fmt, "usec")) {
+						r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_US);
+					} else if (0 == strcmp(fmt, "msec_frac")) {
+						r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_MS_FRAC);
+					} else if (0 == strcmp(fmt, "usec_frac")) {
+						r = conf->time_frac(opaque, &pred, redirect, when, LF_RTIME_US_FRAC);
+					} else {
+						r = conf->time(opaque, &pred, redirect, when, fmt);
+					}
+
+					break;
+				}
+
+				case 'T':
+					if (name.p == NULL) {
+						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
+					} else if (nameeq(name.p, name.n, "ms")) {
+						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_MS);
+					} else if (nameeq(name.p, name.n, "us")) {
+						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_US);
+					} else if (nameeq(name.p, name.n, "s")) {
+						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
+					} else {
+						ERR(name.p, name.p + name.n, UNRECOGNISED_RTIME_UNIT);
+					}
+					break;
+
+				case 'u': r = conf->remote_user(opaque, &pred, redirect);    break;
+				case 'U': r = conf->url_path(opaque, &pred, redirect);       break;
+				case 'v': r = conf->server_name(opaque, &pred, redirect, 1); break;
+				case 'V': r = conf->server_name(opaque, &pred, redirect, conf->use_canonical_name); break;
+				case 'X': r = conf->conn_status(opaque, &pred, redirect);    break;
+				case 'I': r = conf->bytes_recv(opaque, &pred, redirect);     break;
+				case 'O': r = conf->bytes_sent(opaque, &pred, redirect);     break;
+				case 'S': r = conf->bytes_xfer(opaque, &pred, redirect);     break;
+
+				case '^':
+					p++;
+
+					if (*p != 't') {
+						ERR(p - 2, p, UNRECOGNISED_DIRECTIVE);
+					}
+
+					p++;
+
+					switch (*p) {
+					case 'i': r = conf->req_trailer (opaque, &pred, redirect, buf); break;
+					case 'o': r = conf->resp_trailer(opaque, &pred, redirect, buf); break;
+
+					default:
+						ERR(p - 3, p, UNRECOGNISED_DIRECTIVE);
+					}
+
+					break;
 
 				default:
-					ERR(p - 3, p, UNRECOGNISED_DIRECTIVE);
+					ERR(p - 1, p + 1, UNRECOGNISED_DIRECTIVE);
+					goto error;
 				}
 
 				break;
 
 			default:
-				ERR(p - 1, p + 1, UNRECOGNISED_DIRECTIVE);
-				goto error;
+				r = conf->literal(opaque, *p);
+				break;
 			}
 
-			break;
-
-		default:
-			r = conf->literal(opaque, *p);
-			break;
 		}
 
 		if (!r) {

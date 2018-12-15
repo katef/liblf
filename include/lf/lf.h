@@ -90,6 +90,12 @@ typedef int (lf_id      )(void *opaque, const struct lf_pred *pred, enum lf_redi
 typedef int (lf_strftime)(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, const char *fmt);
 typedef int (lf_fractime)(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_when when, enum lf_rtime unit);
 
+struct lf_config;
+
+typedef int (lf_custom)(const struct lf_config *conf, void *opaque,
+	char c, const struct lf_pred *pred, enum lf_redirect redirect, const char *p, size_t n,
+	enum lf_errno *e);
+
 /*
  * https://httpd.apache.org/docs/current/mod/mod_log_config.html#logformat
  */
@@ -98,6 +104,9 @@ struct lf_config {
 	unsigned hostname_lookups   :1;
 	unsigned identity_check     :1; /* TODO: by callback */
 	unsigned use_canonical_name :1;
+
+	const char *override;
+	lf_custom  *custom;
 
 	lf_char     *literal;
 

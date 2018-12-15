@@ -524,6 +524,38 @@ print_resp_trailer(void *opaque, const struct lf_pred *pred,
 	return 1;
 }
 
+static int
+custom(const struct lf_config *conf, void *opaque,
+	char c, const struct lf_pred *pred, enum lf_redirect redirect, const char *p, size_t n,
+	enum lf_errno *e)
+{
+	assert(conf != NULL);
+	assert(opaque == NULL);
+
+	(void) conf;
+
+	switch (c) {
+	case 'Y':
+		*e = LF_ERR_UNRECOGNISED_DIRECTIVE;
+		return 0;
+
+	case 'X':
+		if (p != NULL) {
+			*e = LF_ERR_UNWANTED_NAME;
+			return 0;
+		}
+
+	default:
+		;
+	}
+
+	print_pred(pred);
+	print_redirect(redirect);
+	printf("custom %%%c: %.*s\n", c, (int) n, p);
+
+	return 1;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -537,6 +569,9 @@ main(int argc, char *argv[])
 	conf.hostname_lookups   = 0;
 	conf.identity_check     = 0;
 	conf.use_canonical_name = 0;
+
+	conf.override = "XYZ";
+	conf.custom   = custom;
 
 	conf.literal            = print_literal;
 
