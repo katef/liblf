@@ -19,6 +19,7 @@ SUBDIR += examples/lfdump
 SUBDIR += examples
 SUBDIR += src
 SUBDIR += pc
+SUBDIR += test
 
 INCDIR += include
 
