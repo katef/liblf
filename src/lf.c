@@ -258,10 +258,42 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			}
 
 			/*
-			 * Custom overrides are handled first, because they need to be
-			 * able to replace standard directives. So the special cases
-			 * below (for %s, %U, %T etc) will be skipped.
+			 * LogFormat:
+			 * "By default, the % directives %s, %U, %T, %D, and %r
+			 * look at the original request while all others look at
+			 * the final request."
 			 *
+			 * There is currently no way to specify equivalent defaults
+			 * for custom directives.
+			 */
+			switch (*p) {
+			case 's':
+			case 'U':
+			case 'T':
+			case 'D':
+			case 'r': redirect = LF_REDIRECT_ORIG;  break;
+			default:  redirect = LF_REDIRECT_FINAL; break;
+			}
+
+			if (redirectp != NULL) {
+				switch (*redirectp) {
+				case '<': redirect = LF_REDIRECT_ORIG;  break;
+				case '>': redirect = LF_REDIRECT_FINAL; break;
+
+				default:
+					assert(!"unreached");
+				}
+
+				errstuff.toomanyredirect = redirectp;
+
+				redirectp++;
+
+				if (*redirectp == '<' || *redirectp == '>') {
+					ERR(TOO_MANY_REDIRECT_FLAGS);
+				}
+			}
+
+			/*
 			 * The custom callback decides if the character is relevant.
 			 * Note for non-alpha handling falls through to the non-custom
 			 * directives below, which will then error out.
@@ -283,39 +315,6 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				}
 
 			} else {
-
-				/*
-				 * LogFormat:
-				 * "By default, the % directives %s, %U, %T, %D, and %r
-				 * look at the original request while all others look at
-				 * the final request."
-				 */
-				switch (*p) {
-				case 's':
-				case 'U':
-				case 'T':
-				case 'D':
-				case 'r': redirect = LF_REDIRECT_ORIG;  break;
-				default:  redirect = LF_REDIRECT_FINAL; break;
-				}
-
-				if (redirectp != NULL) {
-					switch (*redirectp) {
-					case '<': redirect = LF_REDIRECT_ORIG;  break;
-					case '>': redirect = LF_REDIRECT_FINAL; break;
-
-					default:
-						assert(!"unreached");
-					}
-
-					errstuff.toomanyredirect = redirectp;
-
-					redirectp++;
-
-					if (*redirectp == '<' || *redirectp == '>') {
-						ERR(TOO_MANY_REDIRECT_FLAGS);
-					}
-				}
 
 				switch (*p) {
 				case 't':
