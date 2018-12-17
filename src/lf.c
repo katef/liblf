@@ -14,13 +14,12 @@
 
 #define MAX_STATUS 0xffffU /* minimum UINT_MAX */
 
-#define ERR(xp, xe, code)                 \
-	assert((xp) != NULL && (xe) != NULL); \
-	assert((xe) >= (xp));                 \
+#define ERR(xp, xn, code)                 \
+	assert((xp) != NULL);                 \
 	if (ep != NULL) {                     \
 	    ep->errnum = LF_ERR_ ## code;     \
 	    ep->p = (xp);                     \
-	    ep->n = (xe) - ep->p;             \
+	    ep->n = (xn);                     \
 	}                                     \
 	goto error;
 
@@ -135,6 +134,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 		switch (*p) {
 			const char *redirectp;
+			const char *percentp;
 
 		case '\\':
 			p++;
@@ -156,15 +156,17 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			case '\\': r = conf->literal(opaque, '\\'); break;
 
 			case '\0':
-				ERR(p - 1, p, MISSING_ESCAPE);
+				ERR(p - 1, 1, MISSING_ESCAPE);
 
 			default:
-				ERR(p - 1, p, UNRECOGNISED_ESCAPE);
+				ERR(p - 1, 2, UNRECOGNISED_ESCAPE);
 			}
 
 			break;
 
 		case '%':
+			percentp = p;
+
 			p++;
 
 			/*
@@ -187,7 +189,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				/* skip comma-separated list of digits */
 				u = parse_status(p, &e);
 				if (u == 0 && e != p) {
-					ERR(p, e, STATUS_OVERFLOW);
+					ERR(p, strspn(p, "023456789"), STATUS_OVERFLOW);
 				}
 
 				if (u == 0) {
@@ -197,7 +199,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				p = e;
 
 				if (pred.count == sizeof status / sizeof *status) {
-					ERR(p, e, TOO_MANY_STATUSES);
+					ERR(p, e - p, TOO_MANY_STATUSES);
 				}
 
 				status[pred.count] = u;
@@ -225,16 +227,14 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				n = strcspn(p, "}");
 				if (p[n] != '}') {
-					ERR(p - 1, p - 1, MISSING_CLOSING_BRACE);
+					ERR(p - 1, 0, MISSING_CLOSING_BRACE);
 				}
 
 				if (n == 0) {
-					ERR(p - 1, p + n + 1, EMPTY_NAME);
+					ERR(p - 1, 2, EMPTY_NAME);
 				}
 
-				if (name.p != NULL) {
-					ERR(p, p + n, NAME_ALREADY_SET);
-				}
+				assert(name.p == NULL);
 
 				name.p = p;
 				name.n = n;
@@ -250,6 +250,8 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			 * below (for %s, %U, %T etc) will be skipped.
 			 *
 			 * The custom callback decides if the character is relevant.
+			 * Note for non-alpha handling falls through to the non-custom
+			 * directives below, which will then error out.
 			 */
 
 			if (conf->override != NULL && isalpha((unsigned char) *p) && strchr(conf->override, *p)) {
@@ -259,7 +261,8 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				r = conf->custom(conf, opaque, *p, &pred, redirect, name.p, name.n, &e);
 				if (!r) {
-					const char *xp, *xe;
+					const char *xp;
+					size_t xn;
 
 					/* TODO: do this per class of error; have enum contain a mask for 'token type',
 					 * for which things to point at */
@@ -267,22 +270,21 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					case LF_ERR_EMPTY_NAME:
 					case LF_ERR_UNWANTED_NAME:
 						xp = name.p;
-						xe = name.p + name.n;
+						xn = name.n;
 						break;
 
 					default:
 						xp = p - 1;
-						xe = p + 1;
+						xn = 2;
 					}
 
-					assert(xp != NULL && xe != NULL);
-					assert(xe >= xp);
+					assert(xp != NULL);
 
 					/* TODO: combine with ERR() */
 					if (ep != NULL) {
 						ep->errnum = e;
 						ep->p = xp;
-						ep->n = xe - ep->p;
+						ep->n = xn;
 					}
 
 					goto error;
@@ -317,7 +319,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					redirectp++;
 
 					if (*redirectp == '<' || *redirectp == '>') {
-						ERR(redirectp - 1, redirectp, TOO_MANY_REDIRECT_FLAGS);
+						ERR(redirectp - 1, strspn(redirectp - 1, "<>"), TOO_MANY_REDIRECT_FLAGS);
 					}
 				}
 
@@ -344,11 +346,12 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				case 'o':
 				case '^':
 					if (name.p == NULL) {
-						ERR(p - 1, p + 1, MISSING_NAME);
+						ERR(percentp, p - percentp + 1, MISSING_NAME);
 					}
 
+					/* XXX: pass pointer and length instead */
 					if (name.n > (sizeof buf) - 1) {
-						ERR(p - 1, p + 1, NAME_OVERFLOW);
+						ERR(name.p, name.n, NAME_OVERFLOW);
 					}
 
 					memcpy(buf, name.p, name.n);
@@ -356,18 +359,25 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 					break;
 
+				case 'a':
+				case 'p':
+				case 'P':
+				case 'T':
+					break;
+
 				default:
+					if (!isalpha((unsigned char) *p)) {
+						break;
+					}
+
 					if (name.p != NULL) {
-						ERR(name.p, name.p + name.n, UNWANTED_NAME);
+						ERR(name.p - 1, name.n + 2, UNWANTED_NAME);
 					}
 
 					break;
 				}
 
 				switch (*p) {
-				case '\0':
-					ERR(p - 1, p, MISSING_DIRECTIVE);
-
 				case '%':
 					/* TODO: is a status list permitted here? i don't see why not */
 					r = conf->literal(opaque, '%');
@@ -396,7 +406,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "c")) {
 						r = conf->ip(opaque, &pred, redirect, LF_IP_PEER);
 					} else {
-						ERR(name.p, name.p + name.n, UNRECOGNISED_IP_TYPE);
+						ERR(name.p, name.n, UNRECOGNISED_IP_TYPE);
 					}
 					break;
 
@@ -410,7 +420,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "remote")) {
 						r = conf->ip(opaque, &pred, redirect, LF_PORT_REMOTE);
 					} else {
-						ERR(name.p, name.p + name.n, UNRECOGNISED_PORT_TYPE);
+						ERR(name.p, name.n, UNRECOGNISED_PORT_TYPE);
 					}
 					break;
 
@@ -424,7 +434,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "hextid")) {
 						r = conf->ip(opaque, &pred, redirect, LF_ID_HEXTID);
 					} else {
-						ERR(name.p, name.p + name.n, UNRECOGNISED_ID_TYPE);
+						ERR(name.p, name.n, UNRECOGNISED_ID_TYPE);
 					}
 					break;
 
@@ -484,7 +494,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "s")) {
 						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
 					} else {
-						ERR(name.p, name.p + name.n, UNRECOGNISED_RTIME_UNIT);
+						ERR(name.p, name.n, UNRECOGNISED_RTIME_UNIT);
 					}
 					break;
 
@@ -501,7 +511,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					p++;
 
 					if (*p != 't') {
-						ERR(p - 2, p, UNRECOGNISED_DIRECTIVE);
+						ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
 					}
 
 					p++;
@@ -511,13 +521,16 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					case 'o': r = conf->resp_trailer(opaque, &pred, redirect, buf); break;
 
 					default:
-						ERR(p - 3, p, UNRECOGNISED_DIRECTIVE);
+						ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
 					}
 
 					break;
 
+				case '\0':
+					ERR(percentp, p - percentp, MISSING_DIRECTIVE);
+
 				default:
-					ERR(p - 1, p + 1, UNRECOGNISED_DIRECTIVE);
+					ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
 					goto error;
 				}
 
@@ -531,7 +544,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		}
 
 		if (!r) {
-			ERR(p - 1, p + 1, HOOK);
+			ERR(p - 1, 2, HOOK);
 		}
 	}
 

@@ -615,17 +615,9 @@ main(int argc, char *argv[])
 
 		assert(err.p >= argv[1]);
 
-		fprintf(stderr, "error: %s", lf_strerror(err.errnum));
+		fprintf(stderr, "error: %s\n", lf_strerror(err.errnum));
 
-		switch (err.errnum) {
-		case LF_ERR_UNRECOGNISED_DIRECTIVE:
-			fprintf(stderr, " '%%%c'\n", *(err.p + (*err.p == '%')));
-			break;
-
-		default:
-			fprintf(stderr, "\n");
-			break;
-		}
+		/* note not all directives are exactly one character */
 
 		r = fprintf(stderr, "at %lu: ", err.p - argv[1]);
 		fprintf(stderr, "'%s'\n", argv[1]);

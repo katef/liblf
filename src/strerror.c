@@ -29,7 +29,6 @@ lf_strerror(enum lf_errno e)
 	case LF_ERR_STATUS_OVERFLOW:         return "Status overflow";
 	case LF_ERR_TOO_MANY_STATUSES:       return "Too many statuses";
 	case LF_ERR_TOO_MANY_REDIRECT_FLAGS: return "Too many redirect flags";
-	case LF_ERR_NAME_ALREADY_SET:        return "Name already set";
 	case LF_ERR_EMPTY_NAME:              return "Empty name";
 	case LF_ERR_UNWANTED_NAME:           return "Unwanted name";
 
