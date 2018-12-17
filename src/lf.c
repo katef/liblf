@@ -349,23 +349,220 @@ error:
 	return 0;
 }
 
+static int
+parse_escape(struct lf_config *conf, void *opaque, const char **p,
+	enum lf_errno *e)
+{
+	int r;
+
+	assert(conf != NULL);
+	assert(p != NULL && *p != NULL);
+	assert(e != NULL);
+
+	(*p)++;
+
+	/*
+	 * LogFormat:
+	 * "... and the C-style control characters "\n" and "\t"
+	 * to represent new-lines and tabs. Literal quotes and backslashes
+	 * should be escaped with backslashes."
+	 */
+
+	assert(conf->literal != NULL);
+
+	switch (**p) {
+	case 't':  r = conf->literal(opaque, '\t'); break;
+	case 'n':  r = conf->literal(opaque, '\n'); break;
+	case '\'': r = conf->literal(opaque, '\''); break;
+	case '\"': r = conf->literal(opaque, '\"'); break;
+	case '\\': r = conf->literal(opaque, '\\'); break;
+
+	case '\0':
+		XRR(MISSING_ESCAPE);
+
+	default:
+		XRR(UNRECOGNISED_ESCAPE);
+	}
+
+	return r;
+
+error:
+
+	return 0;
+}
+
+static int
+parse_directive(struct lf_config *conf, void *opaque, const char **p,
+	enum lf_errno *e, struct errstuff *errstuff)
+{
+	const char *redirectp;
+	unsigned status[128]; /* arbitrary limit */
+	struct txt name;
+	struct lf_pred pred;
+	enum lf_redirect redirect;
+	int r;
+
+	assert(conf != NULL);
+	assert(p != NULL && *p != NULL);
+	assert(e != NULL);
+	assert(errstuff != NULL);
+
+	name.p = NULL;
+
+	pred.neg    = 0;
+	pred.count  = 0;
+	pred.status = status;
+
+	(*p)++;
+
+	/*
+	 * LogFormat:
+	 * "Particular items can be restricted to print only for resps
+	 * with specific HTTP status codes by placing a comma-separated list
+	 * of status codes immediately following the "%". The status code
+	 * list may be preceded by a "!" to indicate negation.
+	 */
+
+	if (**p == '!') {
+		pred.neg = 1;
+		(*p)++;
+	}
+
+	do {
+		const char *end;
+		unsigned u;
+
+		/* skip comma-separated list of digits */
+		u = parse_status(*p, &end);
+		if (u == 0 && end != *p) {
+			XRR(STATUS_OVERFLOW);
+		}
+
+		if (u == 0) {
+			break;
+		}
+
+		*p = end;
+
+		errstuff->endofstatuslist = end;
+
+		if (pred.count == sizeof status / sizeof *status) {
+			XRR(TOO_MANY_STATUSES);
+		}
+
+		status[pred.count] = u;
+		pred.count++;
+
+	} while (**p == ',' && (*p)++);
+
+	if (pred.count > 0) {
+		qsort(pred.status, pred.count, sizeof *pred.status,	uintcmp);
+	}
+
+	uniq(pred.status, &pred.count);
+
+	if (**p == '<' || **p == '>') {
+		redirectp = *p;
+		(*p)++;
+	} else {
+		redirectp = NULL;
+	}
+
+	if (**p == '{') {
+		size_t n;
+
+		errstuff->openingbrace = *p;
+
+		(*p)++;
+
+		n = strcspn(*p, "}");
+		if ((*p)[n] != '}') {
+			XRR(MISSING_CLOSING_BRACE);
+		}
+
+		if (n == 0) {
+			XRR(EMPTY_NAME);
+		}
+
+		assert(name.p == NULL);
+
+		name.p = *p;
+		name.n = n;
+
+		(*p) += n;
+
+		(*p)++;
+	}
+
+	/*
+	 * LogFormat:
+	 * "By default, the % directives %s, %U, %T, %D, and %r
+	 * look at the original request while all others look at
+	 * the final request."
+	 *
+	 * There is currently no way to specify equivalent defaults
+	 * for custom directives.
+	 */
+	switch (**p) {
+	case 's':
+	case 'U':
+	case 'T':
+	case 'D':
+	case 'r': redirect = LF_REDIRECT_ORIG;  break;
+	default:  redirect = LF_REDIRECT_FINAL; break;
+	}
+
+	if (redirectp != NULL) {
+		switch (*redirectp) {
+		case '<': redirect = LF_REDIRECT_ORIG;  break;
+		case '>': redirect = LF_REDIRECT_FINAL; break;
+
+		default:
+			assert(!"unreached");
+		}
+
+		errstuff->toomanyredirect = redirectp;
+
+		redirectp++;
+
+		if (*redirectp == '<' || *redirectp == '>') {
+			XRR(TOO_MANY_REDIRECT_FLAGS);
+		}
+	}
+
+	/*
+	 * The custom callback decides if the character is relevant.
+	 * Note handling for non-alpha characters falls through to
+	 * the non-custom directives below, which will then error out.
+	 */
+
+	if (conf->override != NULL && isalpha((unsigned char) **p) && strchr(conf->override, **p)) {
+		assert(conf->custom != NULL);
+
+		r = conf->custom(conf, opaque, **p, &pred, redirect, name.p, name.n, e);
+
+	} else {
+		r = notcustom(conf, opaque, p, &pred, redirect, &name, e);
+	}
+
+	return r;
+
+error:
+
+	return 0;
+}
+
 int
 lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 	struct lf_err *ep)
 {
-	const char *p;
-
 	struct errstuff errstuff;
+	const char *p;
 
 	assert(conf != NULL);
 	assert(ep != NULL);
 
 	for (p = fmt; *p != '\0'; p++) {
-		unsigned status[128]; /* arbitrary limit */
-
-		struct txt name;
-		struct lf_pred pred;
-		enum lf_redirect redirect;
 		int r;
 
 		errstuff.toomanyredirect = NULL;
@@ -373,39 +570,22 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		errstuff.endofstatuslist = NULL;
 		errstuff.openingbrace    = NULL;
 
-		name.p = NULL;
-
-		pred.neg    = 0;
-		pred.count  = 0;
-		pred.status = status;
-
 		switch (*p) {
-			const char *redirectp;
-
 		case '\\':
-			p++;
+			{
+				enum lf_errno e;
 
-			/*
-			 * LogFormat:
-			 * "... and the C-style control characters "\n" and "\t"
-			 * to represent new-lines and tabs. Literal quotes and backslashes
-			 * should be escaped with backslashes."
-			 */
+				r = parse_escape(conf, opaque, &p, &e);
 
-			assert(conf->literal != NULL);
+				/* TODO: combine with test for !r below? */
+				if (!r) {
+					/* TODO: combine with ERR() */
+					if (ep != NULL) {
+						ep->errnum = e;
+					}
 
-			switch (*p) {
-			case 't':  r = conf->literal(opaque, '\t'); break;
-			case 'n':  r = conf->literal(opaque, '\n'); break;
-			case '\'': r = conf->literal(opaque, '\''); break;
-			case '\"': r = conf->literal(opaque, '\"'); break;
-			case '\\': r = conf->literal(opaque, '\\'); break;
-
-			case '\0':
-				ERR(MISSING_ESCAPE);
-
-			default:
-				ERR(UNRECOGNISED_ESCAPE);
+					goto error;
+				}
 			}
 
 			break;
@@ -413,140 +593,10 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		case '%':
 			errstuff.percent = p;
 
-			p++;
-
-			/*
-			 * LogFormat:
-			 * "Particular items can be restricted to print only for resps
-			 * with specific HTTP status codes by placing a comma-separated list
-			 * of status codes immediately following the "%". The status code
-			 * list may be preceded by a "!" to indicate negation.
-			 */
-
-			if (*p == '!') {
-				pred.neg = 1;
-				p++;
-			}
-
-			do {
-				const char *e;
-				unsigned u;
-
-				/* skip comma-separated list of digits */
-				u = parse_status(p, &e);
-				if (u == 0 && e != p) {
-					ERR(STATUS_OVERFLOW);
-				}
-
-				if (u == 0) {
-					break;
-				}
-
-				p = e;
-
-				errstuff.endofstatuslist = e;
-
-				if (pred.count == sizeof status / sizeof *status) {
-					ERR(TOO_MANY_STATUSES);
-				}
-
-				status[pred.count] = u;
-				pred.count++;
-
-			} while (*p == ',' && p++);
-
-			if (pred.count > 0) {
-				qsort(pred.status, pred.count, sizeof *pred.status,	uintcmp);
-			}
-
-			uniq(pred.status, &pred.count);
-
-			if (*p == '<' || *p == '>') {
-				redirectp = p;
-				p++;
-			} else {
-				redirectp = NULL;
-			}
-
-			if (*p == '{') {
-				size_t n;
-
-				errstuff.openingbrace = p;
-
-				p++;
-
-				n = strcspn(p, "}");
-				if (p[n] != '}') {
-					ERR(MISSING_CLOSING_BRACE);
-				}
-
-				if (n == 0) {
-					ERR(EMPTY_NAME);
-				}
-
-				assert(name.p == NULL);
-
-				name.p = p;
-				name.n = n;
-
-				p += n;
-
-				p++;
-			}
-
-			/*
-			 * LogFormat:
-			 * "By default, the % directives %s, %U, %T, %D, and %r
-			 * look at the original request while all others look at
-			 * the final request."
-			 *
-			 * There is currently no way to specify equivalent defaults
-			 * for custom directives.
-			 */
-			switch (*p) {
-			case 's':
-			case 'U':
-			case 'T':
-			case 'D':
-			case 'r': redirect = LF_REDIRECT_ORIG;  break;
-			default:  redirect = LF_REDIRECT_FINAL; break;
-			}
-
-			if (redirectp != NULL) {
-				switch (*redirectp) {
-				case '<': redirect = LF_REDIRECT_ORIG;  break;
-				case '>': redirect = LF_REDIRECT_FINAL; break;
-
-				default:
-					assert(!"unreached");
-				}
-
-				errstuff.toomanyredirect = redirectp;
-
-				redirectp++;
-
-				if (*redirectp == '<' || *redirectp == '>') {
-					ERR(TOO_MANY_REDIRECT_FLAGS);
-				}
-			}
-
-			/*
-			 * The custom callback decides if the character is relevant.
-			 * Note handling for non-alpha characters falls through to
-			 * the non-custom directives below, which will then error out.
-			 */
-
 			{
 				enum lf_errno e;
 
-				if (conf->override != NULL && isalpha((unsigned char) *p) && strchr(conf->override, *p)) {
-					assert(conf->custom != NULL);
-
-					r = conf->custom(conf, opaque, *p, &pred, redirect, name.p, name.n, &e);
-
-				} else {
-					r = notcustom(conf, opaque, &p, &pred, redirect, &name, &e);
-				}
+				r = parse_directive(conf, opaque, &p, &e, &errstuff);
 
 				/* TODO: combine with test for !r below? */
 				if (!r) {
