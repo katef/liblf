@@ -14,13 +14,10 @@
 
 #define MAX_STATUS 0xffffU /* minimum UINT_MAX */
 
-#define ERR(xp, xn, code)                 \
-	assert((xp) != NULL);                 \
-	if (ep != NULL) {                     \
-	    ep->errnum = LF_ERR_ ## code;     \
-	    ep->p = (xp);                     \
-	    ep->n = (xn);                     \
-	}                                     \
+#define ERR(code)                     \
+	if (ep != NULL) {                 \
+	    ep->errnum = LF_ERR_ ## code; \
+	}                                 \
 	goto error;
 
 static int
@@ -109,6 +106,18 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 {
 	const char *p;
 
+	struct txt {
+		const char *p;
+		size_t n;
+	};
+
+	struct errstuff {
+		const char *toomanyredirect;
+		const char *percent;
+		const char *endofstatuslist;
+		const char *openingbrace;
+	} errstuff;
+
 	assert(conf != NULL);
 	assert(ep != NULL);
 
@@ -116,15 +125,16 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		unsigned status[128]; /* arbitrary limit */
 		char buf[128]; /* arbitrary limit */
 
+		struct txt name;
 		struct lf_pred pred;
 		enum lf_redirect redirect;
 		const char *fmt;
 		int r;
 
-		struct {
-			const char *p;
-			size_t n;
-		} name;
+		errstuff.toomanyredirect = NULL;
+		errstuff.percent         = NULL;
+		errstuff.endofstatuslist = NULL;
+		errstuff.openingbrace    = NULL;
 
 		name.p = NULL;
 
@@ -134,7 +144,6 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 		switch (*p) {
 			const char *redirectp;
-			const char *percentp;
 
 		case '\\':
 			p++;
@@ -156,16 +165,16 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			case '\\': r = conf->literal(opaque, '\\'); break;
 
 			case '\0':
-				ERR(p - 1, 1, MISSING_ESCAPE);
+				ERR(MISSING_ESCAPE);
 
 			default:
-				ERR(p - 1, 2, UNRECOGNISED_ESCAPE);
+				ERR(UNRECOGNISED_ESCAPE);
 			}
 
 			break;
 
 		case '%':
-			percentp = p;
+			errstuff.percent = p;
 
 			p++;
 
@@ -189,7 +198,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				/* skip comma-separated list of digits */
 				u = parse_status(p, &e);
 				if (u == 0 && e != p) {
-					ERR(p, strspn(p, "023456789"), STATUS_OVERFLOW);
+					ERR(STATUS_OVERFLOW);
 				}
 
 				if (u == 0) {
@@ -198,8 +207,10 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				p = e;
 
+				errstuff.endofstatuslist = e;
+
 				if (pred.count == sizeof status / sizeof *status) {
-					ERR(p, e - p, TOO_MANY_STATUSES);
+					ERR(TOO_MANY_STATUSES);
 				}
 
 				status[pred.count] = u;
@@ -223,15 +234,17 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 			if (*p == '{') {
 				size_t n;
 
+				errstuff.openingbrace = p;
+
 				p++;
 
 				n = strcspn(p, "}");
 				if (p[n] != '}') {
-					ERR(p - 1, 0, MISSING_CLOSING_BRACE);
+					ERR(MISSING_CLOSING_BRACE);
 				}
 
 				if (n == 0) {
-					ERR(p - 1, 2, EMPTY_NAME);
+					ERR(EMPTY_NAME);
 				}
 
 				assert(name.p == NULL);
@@ -261,30 +274,9 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 				r = conf->custom(conf, opaque, *p, &pred, redirect, name.p, name.n, &e);
 				if (!r) {
-					const char *xp;
-					size_t xn;
-
-					/* TODO: do this per class of error; have enum contain a mask for 'token type',
-					 * for which things to point at */
-					switch (e) {
-					case LF_ERR_EMPTY_NAME:
-					case LF_ERR_UNWANTED_NAME:
-						xp = name.p;
-						xn = name.n;
-						break;
-
-					default:
-						xp = p - 1;
-						xn = 2;
-					}
-
-					assert(xp != NULL);
-
 					/* TODO: combine with ERR() */
 					if (ep != NULL) {
 						ep->errnum = e;
-						ep->p = xp;
-						ep->n = xn;
 					}
 
 					goto error;
@@ -316,10 +308,12 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 						assert(!"unreached");
 					}
 
+					errstuff.toomanyredirect = redirectp;
+
 					redirectp++;
 
 					if (*redirectp == '<' || *redirectp == '>') {
-						ERR(redirectp - 1, strspn(redirectp - 1, "<>"), TOO_MANY_REDIRECT_FLAGS);
+						ERR(TOO_MANY_REDIRECT_FLAGS);
 					}
 				}
 
@@ -346,12 +340,12 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 				case 'o':
 				case '^':
 					if (name.p == NULL) {
-						ERR(percentp, p - percentp + 1, MISSING_NAME);
+						ERR(MISSING_NAME);
 					}
 
 					/* XXX: pass pointer and length instead */
 					if (name.n > (sizeof buf) - 1) {
-						ERR(name.p, name.n, NAME_OVERFLOW);
+						ERR(NAME_OVERFLOW);
 					}
 
 					memcpy(buf, name.p, name.n);
@@ -371,7 +365,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					}
 
 					if (name.p != NULL) {
-						ERR(name.p - 1, name.n + 2, UNWANTED_NAME);
+						ERR(UNWANTED_NAME);
 					}
 
 					break;
@@ -406,7 +400,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "c")) {
 						r = conf->ip(opaque, &pred, redirect, LF_IP_PEER);
 					} else {
-						ERR(name.p, name.n, UNRECOGNISED_IP_TYPE);
+						ERR(UNRECOGNISED_IP_TYPE);
 					}
 					break;
 
@@ -420,7 +414,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "remote")) {
 						r = conf->ip(opaque, &pred, redirect, LF_PORT_REMOTE);
 					} else {
-						ERR(name.p, name.n, UNRECOGNISED_PORT_TYPE);
+						ERR(UNRECOGNISED_PORT_TYPE);
 					}
 					break;
 
@@ -434,7 +428,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "hextid")) {
 						r = conf->ip(opaque, &pred, redirect, LF_ID_HEXTID);
 					} else {
-						ERR(name.p, name.n, UNRECOGNISED_ID_TYPE);
+						ERR(UNRECOGNISED_ID_TYPE);
 					}
 					break;
 
@@ -494,7 +488,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					} else if (nameeq(name.p, name.n, "s")) {
 						r = conf->time_taken(opaque, &pred, redirect, LF_RTIME_S);
 					} else {
-						ERR(name.p, name.n, UNRECOGNISED_RTIME_UNIT);
+						ERR(UNRECOGNISED_RTIME_UNIT);
 					}
 					break;
 
@@ -511,7 +505,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					p++;
 
 					if (*p != 't') {
-						ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
+						ERR(UNRECOGNISED_DIRECTIVE);
 					}
 
 					p++;
@@ -521,16 +515,16 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 					case 'o': r = conf->resp_trailer(opaque, &pred, redirect, buf); break;
 
 					default:
-						ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
+						ERR(UNRECOGNISED_DIRECTIVE);
 					}
 
 					break;
 
 				case '\0':
-					ERR(percentp, p - percentp, MISSING_DIRECTIVE);
+					ERR(MISSING_DIRECTIVE);
 
 				default:
-					ERR(percentp, p - percentp + 1, UNRECOGNISED_DIRECTIVE);
+					ERR(UNRECOGNISED_DIRECTIVE);
 					goto error;
 				}
 
@@ -544,7 +538,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		}
 
 		if (!r) {
-			ERR(p - 1, 2, HOOK);
+			ERR(HOOK);
 		}
 	}
 
@@ -552,6 +546,68 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 
 error:
 
+	if (ep != NULL) {
+		const char *xp;
+		size_t xn;
+
+		switch (ep->errnum) {
+		case LF_ERR_MISSING_CLOSING_BRACE:   xp = errstuff.openingbrace; xn = 0; break;
+		case LF_ERR_MISSING_ESCAPE:          xp = p - 1; xn = 1; break;
+		case LF_ERR_UNRECOGNISED_ESCAPE:     xp = p - 1; xn = 2; break;
+		case LF_ERR_HOOK:                    xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
+
+		case LF_ERR_TOO_MANY_STATUSES:       xp = p; xn = errstuff.endofstatuslist - p; break; /* XXX: endofstatuslist may be NULL, if this is from a custom callback */
+		case LF_ERR_STATUS_OVERFLOW:         xp = p; xn = strspn(p, "023456789"); break;
+
+		case LF_ERR_TOO_MANY_REDIRECT_FLAGS: xp = errstuff.toomanyredirect; xn = strspn(errstuff.toomanyredirect, "<>"); break;
+
+		case LF_ERR_MISSING_DIRECTIVE:       xp = errstuff.percent; xn = p - errstuff.percent; break;
+		case LF_ERR_MISSING_NAME:            xp = errstuff.percent; xn = p - errstuff.percent + 1; break;
+		case LF_ERR_UNRECOGNISED_DIRECTIVE:  xp = errstuff.percent; xn = p - errstuff.percent + 1; break;
+
+		case LF_ERR_EMPTY_NAME:
+			xp = errstuff.openingbrace;
+			xn = 2;
+			break;
+
+		case LF_ERR_NAME_OVERFLOW:
+			xp = errstuff.openingbrace + 1;
+			xn = strcspn(xp, "}");
+			break;
+
+		case LF_ERR_UNRECOGNISED_ID_TYPE:
+		case LF_ERR_UNRECOGNISED_IP_TYPE:
+		case LF_ERR_UNRECOGNISED_PORT_TYPE:
+		case LF_ERR_UNRECOGNISED_RTIME_UNIT:
+			xp = errstuff.openingbrace + 1;
+			xn = strcspn(xp, "}");
+			break;
+
+		case LF_ERR_UNWANTED_NAME:
+			xp = errstuff.openingbrace;
+			xn = strcspn(xp, "}") + 1;
+			break;
+
+		default:
+			assert(!"unreached");
+		}
+
+		/* TODO: if we're showing name.p, cut down xn to (sizeof buf) - 1 here */
+
+		/* fall outwards to the entire directive */
+		if (xp == NULL) {
+			xp = errstuff.percent;
+			if (xn != 0) {
+				xn = p - errstuff.percent;
+			}
+		}
+
+		/* XXX: errstuff.percent may be NULL; fall back to xp = p; xn = 0 */
+
+		ep->p = xp;
+		ep->n = xn;
+	}
+
 	return 0;
-}
+	}
 
