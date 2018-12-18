@@ -16,7 +16,7 @@
 
 #define ERR(code)         \
 	*e = LF_ERR_ ## code; \
-	goto error;
+	return 0;
 
 struct errstuff {
 	const char *toomanyredirect;
@@ -117,7 +117,6 @@ notcustom(struct lf_config *conf, void *opaque,
 {
 	const char *fmt;
 	char buf[128]; /* arbitrary limit */
-	int r;
 
 	assert(conf != NULL);
 	assert(p != NULL && *p != NULL);
@@ -182,63 +181,59 @@ notcustom(struct lf_config *conf, void *opaque,
 	switch (**p) {
 	case '%':
 		/* TODO: is a status list permitted here? i don't see why not */
-		r = conf->literal(opaque, '%');
-		break;
+		return conf->literal(opaque, '%');
 
-	case 'A': r = conf->ip(opaque, pred, redirect, LF_IP_LOCAL);         break;
-	case 'B': r = conf->resp_size(opaque, pred, redirect);               break;
-	case 'b': r = conf->resp_size_clf(opaque, pred, redirect);           break;
-	case 'C': r = conf->req_cookie(opaque, pred, redirect, buf);         break;
-	case 'D': r = conf->time_taken(opaque, pred, redirect, LF_RTIME_US); break;
-	case 'e': r = conf->env_var(opaque, pred, redirect, buf);            break;
-	case 'f': r = conf->filename(opaque, pred, redirect);                break;
-	case 'h': r = conf->remote_hostname(opaque, pred, redirect, conf->hostname_lookups); break;
-	case 'H': r = conf->req_protocol(opaque, pred, redirect);            break;
-	case 'i': r = conf->req_header(opaque, pred, redirect, buf);         break;
-	case 'k': r = conf->keepalive_reqs(opaque, pred, redirect);          break;
-	case 'l': r = conf->remote_logname(opaque, pred, redirect);          break;
-	case 'L': r = conf->req_logid(opaque, pred, redirect);               break;
-	case 'm': r = conf->req_method(opaque, pred, redirect);              break;
-	case 'n': r = conf->note(opaque, pred, redirect, buf);               break;
-	case 'o': r = conf->reply_header(opaque, pred, redirect, buf);       break;
+	case 'A': return conf->ip(opaque, pred, redirect, LF_IP_LOCAL);
+	case 'B': return conf->resp_size(opaque, pred, redirect);
+	case 'b': return conf->resp_size_clf(opaque, pred, redirect);
+	case 'C': return conf->req_cookie(opaque, pred, redirect, buf);
+	case 'D': return conf->time_taken(opaque, pred, redirect, LF_RTIME_US);
+	case 'e': return conf->env_var(opaque, pred, redirect, buf);
+	case 'f': return conf->filename(opaque, pred, redirect);
+	case 'h': return conf->remote_hostname(opaque, pred, redirect, conf->hostname_lookups);
+	case 'H': return conf->req_protocol(opaque, pred, redirect);
+	case 'i': return conf->req_header(opaque, pred, redirect, buf);
+	case 'k': return conf->keepalive_reqs(opaque, pred, redirect);
+	case 'l': return conf->remote_logname(opaque, pred, redirect);
+	case 'L': return conf->req_logid(opaque, pred, redirect);
+	case 'm': return conf->req_method(opaque, pred, redirect);
+	case 'n': return conf->note(opaque, pred, redirect, buf);
+	case 'o': return conf->reply_header(opaque, pred, redirect, buf);
 
 	case 'a':
 		if (name->p == NULL) {
-			r = conf->ip(opaque, pred, redirect, LF_IP_CLIENT);
+			return conf->ip(opaque, pred, redirect, LF_IP_CLIENT);
 		} else if (nameeq(name->p, name->n, "c")) {
-			r = conf->ip(opaque, pred, redirect, LF_IP_PEER);
+			return conf->ip(opaque, pred, redirect, LF_IP_PEER);
 		} else {
 			ERR(UNRECOGNISED_IP_TYPE);
 		}
-		break;
 
 	case 'p':
 		if (name->p == NULL) {
-			r = conf->server_port(opaque, pred, redirect, LF_PORT_CANONICAL);
+			return conf->server_port(opaque, pred, redirect, LF_PORT_CANONICAL);
 		} else if (nameeq(name->p, name->n, "canonical")) {
-			r = conf->ip(opaque, pred, redirect, LF_PORT_CANONICAL);
+			return conf->ip(opaque, pred, redirect, LF_PORT_CANONICAL);
 		} else if (nameeq(name->p, name->n, "local")) {
-			r = conf->ip(opaque, pred, redirect, LF_PORT_LOCAL);
+			return conf->ip(opaque, pred, redirect, LF_PORT_LOCAL);
 		} else if (nameeq(name->p, name->n, "remote")) {
-			r = conf->ip(opaque, pred, redirect, LF_PORT_REMOTE);
+			return conf->ip(opaque, pred, redirect, LF_PORT_REMOTE);
 		} else {
 			ERR(UNRECOGNISED_PORT_TYPE);
 		}
-		break;
 
 	case 'P':
 		if (name->p == NULL) {
-			r = conf->server_port(opaque, pred, redirect, LF_ID_PID);
+			return conf->server_port(opaque, pred, redirect, LF_ID_PID);
 		} else if (nameeq(name->p, name->n, "pid")) {
-			r = conf->ip(opaque, pred, redirect, LF_ID_PID);
+			return conf->ip(opaque, pred, redirect, LF_ID_PID);
 		} else if (nameeq(name->p, name->n, "tid")) {
-			r = conf->ip(opaque, pred, redirect, LF_ID_TID);
+			return conf->ip(opaque, pred, redirect, LF_ID_TID);
 		} else if (nameeq(name->p, name->n, "hextid")) {
-			r = conf->ip(opaque, pred, redirect, LF_ID_HEXTID);
+			return conf->ip(opaque, pred, redirect, LF_ID_HEXTID);
 		} else {
 			ERR(UNRECOGNISED_ID_TYPE);
 		}
-		break;
 
 	case 't': {
 		enum lf_when when;
@@ -270,44 +265,41 @@ notcustom(struct lf_config *conf, void *opaque,
 		 */
 
 		if (0 == strcmp(fmt, "sec")) {
-			r = conf->time_frac(opaque, pred, redirect, when, LF_RTIME_S);
+			return conf->time_frac(opaque, pred, redirect, when, LF_RTIME_S);
 		} else if (0 == strcmp(fmt, "msec")) {
-			r = conf->time_frac(opaque, pred, redirect, when, LF_RTIME_MS);
+			return conf->time_frac(opaque, pred, redirect, when, LF_RTIME_MS);
 		} else if (0 == strcmp(fmt, "usec")) {
-			r = conf->time_frac(opaque, pred, redirect, when, LF_RTIME_US);
+			return conf->time_frac(opaque, pred, redirect, when, LF_RTIME_US);
 		} else if (0 == strcmp(fmt, "msec_frac")) {
-			r = conf->time_frac(opaque, pred, redirect, when, LF_RTIME_MS_FRAC);
+			return conf->time_frac(opaque, pred, redirect, when, LF_RTIME_MS_FRAC);
 		} else if (0 == strcmp(fmt, "usec_frac")) {
-			r = conf->time_frac(opaque, pred, redirect, when, LF_RTIME_US_FRAC);
+			return conf->time_frac(opaque, pred, redirect, when, LF_RTIME_US_FRAC);
 		} else {
-			r = conf->time(opaque, pred, redirect, when, fmt);
+			return conf->time(opaque, pred, redirect, when, fmt);
 		}
-
-		break;
 	}
 
 	case 'T':
 		if (name->p == NULL) {
-			r = conf->time_taken(opaque, pred, redirect, LF_RTIME_S);
+			return conf->time_taken(opaque, pred, redirect, LF_RTIME_S);
 		} else if (nameeq(name->p, name->n, "ms")) {
-			r = conf->time_taken(opaque, pred, redirect, LF_RTIME_MS);
+			return conf->time_taken(opaque, pred, redirect, LF_RTIME_MS);
 		} else if (nameeq(name->p, name->n, "us")) {
-			r = conf->time_taken(opaque, pred, redirect, LF_RTIME_US);
+			return conf->time_taken(opaque, pred, redirect, LF_RTIME_US);
 		} else if (nameeq(name->p, name->n, "s")) {
-			r = conf->time_taken(opaque, pred, redirect, LF_RTIME_S);
+			return conf->time_taken(opaque, pred, redirect, LF_RTIME_S);
 		} else {
 			ERR(UNRECOGNISED_RTIME_UNIT);
 		}
-		break;
 
-	case 'u': r = conf->remote_user(opaque, pred, redirect);    break;
-	case 'U': r = conf->url_path(opaque, pred, redirect);       break;
-	case 'v': r = conf->server_name(opaque, pred, redirect, 1); break;
-	case 'V': r = conf->server_name(opaque, pred, redirect, conf->use_canonical_name); break;
-	case 'X': r = conf->conn_status(opaque, pred, redirect);    break;
-	case 'I': r = conf->bytes_recv(opaque, pred, redirect);     break;
-	case 'O': r = conf->bytes_sent(opaque, pred, redirect);     break;
-	case 'S': r = conf->bytes_xfer(opaque, pred, redirect);     break;
+	case 'u': return conf->remote_user(opaque, pred, redirect);
+	case 'U': return conf->url_path(opaque, pred, redirect);
+	case 'v': return conf->server_name(opaque, pred, redirect, 1);
+	case 'V': return conf->server_name(opaque, pred, redirect, conf->use_canonical_name);
+	case 'X': return conf->conn_status(opaque, pred, redirect);
+	case 'I': return conf->bytes_recv(opaque, pred, redirect);
+	case 'O': return conf->bytes_sent(opaque, pred, redirect);
+	case 'S': return conf->bytes_xfer(opaque, pred, redirect);
 
 	case '^':
 		(*p)++;
@@ -319,36 +311,25 @@ notcustom(struct lf_config *conf, void *opaque,
 		(*p)++;
 
 		switch (**p) {
-		case 'i': r = conf->req_trailer (opaque, pred, redirect, buf); break;
-		case 'o': r = conf->resp_trailer(opaque, pred, redirect, buf); break;
+		case 'i': return conf->req_trailer (opaque, pred, redirect, buf);
+		case 'o': return conf->resp_trailer(opaque, pred, redirect, buf);
 
 		default:
 			ERR(UNRECOGNISED_DIRECTIVE);
 		}
-
-		break;
 
 	case '\0':
 		ERR(MISSING_DIRECTIVE);
 
 	default:
 		ERR(UNRECOGNISED_DIRECTIVE);
-		goto error;
 	}
-
-	return r;
-
-error:
-
-	return 0;
 }
 
 static int
 parse_escape(struct lf_config *conf, void *opaque, const char **p,
 	enum lf_errno *e)
 {
-	int r;
-
 	assert(conf != NULL);
 	assert(p != NULL && *p != NULL);
 	assert(e != NULL);
@@ -365,11 +346,11 @@ parse_escape(struct lf_config *conf, void *opaque, const char **p,
 	assert(conf->literal != NULL);
 
 	switch (**p) {
-	case 't':  r = conf->literal(opaque, '\t'); break;
-	case 'n':  r = conf->literal(opaque, '\n'); break;
-	case '\'': r = conf->literal(opaque, '\''); break;
-	case '\"': r = conf->literal(opaque, '\"'); break;
-	case '\\': r = conf->literal(opaque, '\\'); break;
+	case 't':  return conf->literal(opaque, '\t');
+	case 'n':  return conf->literal(opaque, '\n');
+	case '\'': return conf->literal(opaque, '\'');
+	case '\"': return conf->literal(opaque, '\"');
+	case '\\': return conf->literal(opaque, '\\');
 
 	case '\0':
 		ERR(MISSING_ESCAPE);
@@ -377,12 +358,6 @@ parse_escape(struct lf_config *conf, void *opaque, const char **p,
 	default:
 		ERR(UNRECOGNISED_ESCAPE);
 	}
-
-	return r;
-
-error:
-
-	return 0;
 }
 
 static int
@@ -536,16 +511,11 @@ parse_directive(struct lf_config *conf, void *opaque, const char **p,
 		assert(conf->custom != NULL);
 
 		r = conf->custom(conf, opaque, **p, &pred, redirect, name.p, name.n, e);
-
 	} else {
 		r = notcustom(conf, opaque, p, &pred, redirect, &name, e);
 	}
 
 	return r;
-
-error:
-
-	return 0;
 }
 
 int
