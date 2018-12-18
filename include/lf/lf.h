@@ -27,6 +27,7 @@ enum lf_errno {
 	LF_ERR_EMPTY_NAME,
 	LF_ERR_UNWANTED_NAME,
 
+	LF_ERR_UNSUPPORTED, /* for hooks to decline output */
 	LF_ERR_HOOK
 };
 

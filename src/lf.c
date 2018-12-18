@@ -572,6 +572,7 @@ error:
 		case LF_ERR_MISSING_CLOSING_BRACE:   xp = errstuff.openingbrace; xn = 0; break;
 		case LF_ERR_MISSING_ESCAPE:          xp = p - 1; xn = 1; break;
 		case LF_ERR_UNRECOGNISED_ESCAPE:     xp = p - 1; xn = 2; break;
+		case LF_ERR_UNSUPPORTED:
 		case LF_ERR_HOOK:                    xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
 
 		case LF_ERR_TOO_MANY_STATUSES:       xp = p; xn = errstuff.endofstatuslist - p; break; /* XXX: endofstatuslist may be NULL, if this is from a custom callback */

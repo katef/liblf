@@ -32,6 +32,7 @@ lf_strerror(enum lf_errno e)
 	case LF_ERR_EMPTY_NAME:              return "Empty name";
 	case LF_ERR_UNWANTED_NAME:           return "Unwanted name";
 
+	case LF_ERR_UNSUPPORTED:             return "Unsupported directive";
 	case LF_ERR_HOOK:                    return "Hook error";
 
 	default:
