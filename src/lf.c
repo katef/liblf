@@ -576,7 +576,7 @@ error:
 		case LF_ERR_HOOK:                    xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
 
 		case LF_ERR_TOO_MANY_STATUSES:       xp = p; xn = errstuff.endofstatuslist - p; break; /* XXX: endofstatuslist may be NULL, if this is from a custom callback */
-		case LF_ERR_STATUS_OVERFLOW:         xp = p; xn = strspn(p, "023456789"); break;
+		case LF_ERR_STATUS_OVERFLOW:         xp = p; xn = strspn(p, "0123456789"); break;
 
 		case LF_ERR_TOO_MANY_REDIRECT_FLAGS: xp = errstuff.toomanyredirect; xn = strspn(errstuff.toomanyredirect, "<>"); break;
 
