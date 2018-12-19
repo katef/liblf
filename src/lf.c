@@ -537,7 +537,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 		errstuff.endofstatuslist = NULL;
 		errstuff.openingbrace    = NULL;
 
-		e = LF_ERR_HOOK;
+		e = LF_ERR_ERRNO;
 
 		switch (*p) {
 		case '\\':
@@ -573,7 +573,7 @@ error:
 		case LF_ERR_MISSING_ESCAPE:          xp = p - 1; xn = 1; break;
 		case LF_ERR_UNRECOGNISED_ESCAPE:     xp = p - 1; xn = 2; break;
 		case LF_ERR_UNSUPPORTED:
-		case LF_ERR_HOOK:                    xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
+		case LF_ERR_ERRNO:                   xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
 
 		case LF_ERR_TOO_MANY_STATUSES:       xp = p; xn = errstuff.endofstatuslist - p; break; /* XXX: endofstatuslist may be NULL, if this is from a custom callback */
 		case LF_ERR_STATUS_OVERFLOW:         xp = p; xn = strspn(p, "0123456789"); break;

@@ -6,6 +6,8 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <string.h>
+#include <errno.h>
 
 #include <lf/lf.h>
 
@@ -33,7 +35,7 @@ lf_strerror(enum lf_errno e)
 	case LF_ERR_UNWANTED_NAME:           return "Unwanted name";
 
 	case LF_ERR_UNSUPPORTED:             return "Unsupported directive";
-	case LF_ERR_HOOK:                    return "Hook error";
+	case LF_ERR_ERRNO:                   return strerror(errno);
 
 	default:
 		return "?";

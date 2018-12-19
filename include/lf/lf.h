@@ -28,7 +28,7 @@ enum lf_errno {
 	LF_ERR_UNWANTED_NAME,
 
 	LF_ERR_UNSUPPORTED, /* for hooks to decline output */
-	LF_ERR_HOOK
+	LF_ERR_ERRNO /* see errno */
 };
 
 struct lf_err {
@@ -79,6 +79,10 @@ struct lf_pred {
 	unsigned *status; /* array, sorted */
 };
 
+/*
+ * Return true for success, or false for failure.
+ * On failure, you're expected to have errno set.
+ */
 typedef int (lf_bool    )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, int v);
 typedef int (lf_char    )(void *opaque, char c);
 typedef int (lf_ip      )(void *opaque, const struct lf_pred *pred, enum lf_redirect redirect, enum lf_ip ip);
