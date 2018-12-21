@@ -5,5 +5,5 @@ test:: ${BUILD}/test ${BUILD}/bin/lfdump test/err.txt
 		${BUILD}/bin/lfdump "$$fmt" 2>&1 || true; \
 	done \
 	> ${BUILD}/test/err.got
-	diff test/err.txt ${BUILD}/test/err.got
+	diff -u test/err.txt ${BUILD}/test/err.got
 
