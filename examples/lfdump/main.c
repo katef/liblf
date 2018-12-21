@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include <lf/lf.h>
 
@@ -54,7 +55,11 @@ print_literal(void *opaque, char c)
 {
 	assert(opaque == NULL);
 
-	printf("literal: \\x%02X\n", (unsigned char) c);
+	if (isalnum((unsigned char) c) || ispunct((unsigned char) c) || c == ' ') {
+		printf("literal: '%c'\n", c);
+	} else {
+		printf("literal: \\x%02X\n", (unsigned char) c);
+	}
 	return 1;
 }
 
