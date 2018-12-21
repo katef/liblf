@@ -654,7 +654,7 @@ percent:
 		case LF_ERR_UNRECOGNISED_DIRECTIVE:
 			assert(errstuff.percent != NULL);
 			ep->p = errstuff.percent;
-			ep->n = p - errstuff.percent + 1;
+			ep->n = p - errstuff.percent + (*p != '\0');
 			break;
 
 		case LF_ERR_MISSING_DIRECTIVE:
