@@ -1,6 +1,5 @@
 
-liblf: A parser for the syntax used by Apache's LogFormat Directive
-
+## liblf: A parser for the syntax used by Apache's LogFormat Directive
 
 The LogFormat directive provides a printf-like syntax for specifying
 user-defined custom formats for log messages. It's intended for logs
@@ -29,15 +28,15 @@ Related projects:
 
 Clone with submodules (contains required .mk files):
 
- ; git clone --recursive https://github.com/katef/liblf.git
+    ; git clone --recursive https://github.com/katef/liblf.git
 
 To build and install:
 
- ; pmake -r install
+    ; pmake -r install
 
 You can override a few things:
 
- ; CC=clang PREFIX=$HOME pmake -r install
+    ; CC=clang PREFIX=$HOME pmake -r install
 
 Building depends on:
 
@@ -50,7 +49,7 @@ Building depends on:
 
 Fuzzing depends on [Radamsa](https://gitlab.com/akihe/radamsa):
 
-  ; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
+    ; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
 
 Ideas, comments or bugs: kate@elide.org
 
