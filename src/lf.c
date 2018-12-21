@@ -563,8 +563,7 @@ lf_parse(struct lf_config *conf, void *opaque, const char *fmt,
 error:
 
 	if (ep != NULL) {
-		const char *xp;
-		size_t xn;
+		ep->errnum = e;
 
 		/*
 		 * Errors from errno are expected to typically come from hooks,
@@ -577,7 +576,6 @@ error:
 		 * We don't know the difference here.
 		 */
 		if (e == LF_ERR_ERRNO) {
-			ep->errnum = e;
 			ep->p = p;
 			ep->n = 0;
 
@@ -596,35 +594,35 @@ error:
 			if (errstuff.openingbrace == NULL) {
 				goto percent;
 			}
-			xp = errstuff.openingbrace;
-			xn = 1;
+			ep->p = errstuff.openingbrace;
+			ep->n = 1;
 			break;
 
 		case LF_ERR_MISSING_ESCAPE:
 		case LF_ERR_UNRECOGNISED_ESCAPE:
-			xp = p - 1;
-			xn = 1 + (*p != '\0');
+			ep->p = p - 1;
+			ep->n = 1 + (*p != '\0');
 			break;
 
 		case LF_ERR_TOO_MANY_STATUSES:
 			if (errstuff.endofstatuslist == NULL) {
 				goto percent;
 			}
-			xp = p;
-			xn = errstuff.endofstatuslist - p;
+			ep->p = p;
+			ep->n = errstuff.endofstatuslist - p;
 			break;
 
 		case LF_ERR_STATUS_OVERFLOW:
-			xp = p;
-			xn = strspn(p, "0123456789");
+			ep->p = p;
+			ep->n = strspn(p, "0123456789");
 			break;
 
 		case LF_ERR_TOO_MANY_REDIRECT_FLAGS:
 			if (errstuff.toomanyredirect == NULL) {
 				goto percent;
 			}
-			xp = errstuff.toomanyredirect;
-			xn = strspn(errstuff.toomanyredirect, "<>");
+			ep->p = errstuff.toomanyredirect;
+			ep->n = strspn(errstuff.toomanyredirect, "<>");
 			break;
 
 		case LF_ERR_NAME_OVERFLOW:
@@ -635,8 +633,8 @@ error:
 			if (errstuff.openingbrace == NULL) {
 				goto percent;
 			}
-			xp = errstuff.openingbrace + 1;
-			xn = strcspn(xp, "}");
+			ep->p = errstuff.openingbrace + 1;
+			ep->n = strcspn(ep->p, "}");
 			/* TODO: cut down xn to (sizeof buf) - 1 here */
 			break;
 
@@ -645,8 +643,8 @@ error:
 			if (errstuff.openingbrace == NULL) {
 				goto percent;
 			}
-			xp = errstuff.openingbrace;
-			xn = strcspn(xp, "}") + 1;
+			ep->p = errstuff.openingbrace;
+			ep->n = strcspn(ep->p, "}") + 1;
 			break;
 
 percent:
@@ -655,24 +653,19 @@ percent:
 		case LF_ERR_MISSING_NAME:
 		case LF_ERR_UNRECOGNISED_DIRECTIVE:
 			assert(errstuff.percent != NULL);
-			xp = errstuff.percent;
-			xn = p - errstuff.percent + 1;
+			ep->p = errstuff.percent;
+			ep->n = p - errstuff.percent + 1;
 			break;
 
 		case LF_ERR_MISSING_DIRECTIVE:
 			assert(errstuff.percent != NULL);
-			xp = errstuff.percent;
-			xn = p - errstuff.percent;
+			ep->p = errstuff.percent;
+			ep->n = p - errstuff.percent;
 			break;
 
 		default:
 			assert(!"unreached");
 		}
-
-		ep->errnum = e;
-
-		ep->p = xp;
-		ep->n = xn;
 	}
 
 	return 0;
