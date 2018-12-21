@@ -566,62 +566,110 @@ error:
 		const char *xp;
 		size_t xn;
 
-		ep->errnum = e;
+		/*
+		 * Errors from errno are expected to typically come from hooks,
+		 * (e.g. some error on printing output). These don't pertain to
+		 * any particular input in the fmt string, but we point to where
+		 * the cursor is anyway.
+		 *
+		 * LF_ERR_ERRNO can also be produced by a custom directive,
+		 * where the error may or may not be directly caused by the input.
+		 * We don't know the difference here.
+		 */
+		if (e == LF_ERR_ERRNO) {
+			ep->errnum = e;
+			ep->p = p;
+			ep->n = 0;
 
-		switch (ep->errnum) {
-		case LF_ERR_MISSING_CLOSING_BRACE:   xp = errstuff.openingbrace; xn = 0; break;
-		case LF_ERR_MISSING_ESCAPE:          xp = p - 1; xn = 1; break;
-		case LF_ERR_UNRECOGNISED_ESCAPE:     xp = p - 1; xn = 2; break;
-		case LF_ERR_UNSUPPORTED:
-		case LF_ERR_ERRNO:                   xp = p - 1; xn = 2; break; /* XXX: should be whole directive */
+			return 0;
+		}
 
-		case LF_ERR_TOO_MANY_STATUSES:       xp = p; xn = errstuff.endofstatuslist - p; break; /* XXX: endofstatuslist may be NULL, if this is from a custom callback */
-		case LF_ERR_STATUS_OVERFLOW:         xp = p; xn = strspn(p, "0123456789"); break;
+		/*
+		 * Henceforth we know .percent is set for both errors produced by
+		 * custom directives (because .custom is only called after '%'
+		 * is parsed), and errors about other things (e.g. pointing at
+		 * escapes) do not expect .percent to be set.
+		 */
 
-		case LF_ERR_TOO_MANY_REDIRECT_FLAGS: xp = errstuff.toomanyredirect; xn = strspn(errstuff.toomanyredirect, "<>"); break;
-
-		case LF_ERR_MISSING_DIRECTIVE:       xp = errstuff.percent; xn = p - errstuff.percent; break;
-		case LF_ERR_MISSING_NAME:            xp = errstuff.percent; xn = p - errstuff.percent + 1; break;
-		case LF_ERR_UNRECOGNISED_DIRECTIVE:  xp = errstuff.percent; xn = p - errstuff.percent + 1; break;
-
-		case LF_ERR_EMPTY_NAME:
+		switch (e) {
+		case LF_ERR_MISSING_CLOSING_BRACE:
+			if (errstuff.openingbrace == NULL) {
+				goto percent;
+			}
 			xp = errstuff.openingbrace;
-			xn = 2;
+			xn = 1;
+			break;
+
+		case LF_ERR_MISSING_ESCAPE:
+		case LF_ERR_UNRECOGNISED_ESCAPE:
+			xp = p - 1;
+			xn = 1 + (*p != '\0');
+			break;
+
+		case LF_ERR_TOO_MANY_STATUSES:
+			if (errstuff.endofstatuslist == NULL) {
+				goto percent;
+			}
+			xp = p;
+			xn = errstuff.endofstatuslist - p;
+			break;
+
+		case LF_ERR_STATUS_OVERFLOW:
+			xp = p;
+			xn = strspn(p, "0123456789");
+			break;
+
+		case LF_ERR_TOO_MANY_REDIRECT_FLAGS:
+			if (errstuff.toomanyredirect == NULL) {
+				goto percent;
+			}
+			xp = errstuff.toomanyredirect;
+			xn = strspn(errstuff.toomanyredirect, "<>");
 			break;
 
 		case LF_ERR_NAME_OVERFLOW:
-			xp = errstuff.openingbrace + 1;
-			xn = strcspn(xp, "}");
-			break;
-
 		case LF_ERR_UNRECOGNISED_ID_TYPE:
 		case LF_ERR_UNRECOGNISED_IP_TYPE:
 		case LF_ERR_UNRECOGNISED_PORT_TYPE:
 		case LF_ERR_UNRECOGNISED_RTIME_UNIT:
+			if (errstuff.openingbrace == NULL) {
+				goto percent;
+			}
 			xp = errstuff.openingbrace + 1;
 			xn = strcspn(xp, "}");
+			/* TODO: cut down xn to (sizeof buf) - 1 here */
 			break;
 
+		case LF_ERR_EMPTY_NAME:
 		case LF_ERR_UNWANTED_NAME:
+			if (errstuff.openingbrace == NULL) {
+				goto percent;
+			}
 			xp = errstuff.openingbrace;
 			xn = strcspn(xp, "}") + 1;
+			break;
+
+percent:
+
+		case LF_ERR_UNSUPPORTED:
+		case LF_ERR_MISSING_NAME:
+		case LF_ERR_UNRECOGNISED_DIRECTIVE:
+			assert(errstuff.percent != NULL);
+			xp = errstuff.percent;
+			xn = p - errstuff.percent + 1;
+			break;
+
+		case LF_ERR_MISSING_DIRECTIVE:
+			assert(errstuff.percent != NULL);
+			xp = errstuff.percent;
+			xn = p - errstuff.percent;
 			break;
 
 		default:
 			assert(!"unreached");
 		}
 
-		/* TODO: if we're showing name.p, cut down xn to (sizeof buf) - 1 here */
-
-		/* fall outwards to the entire directive */
-		if (xp == NULL) {
-			xp = errstuff.percent;
-			if (xn != 0) {
-				xn = p - errstuff.percent;
-			}
-		}
-
-		/* XXX: errstuff.percent may be NULL; fall back to xp = p; xn = 0 */
+		ep->errnum = e;
 
 		ep->p = xp;
 		ep->n = xn;
