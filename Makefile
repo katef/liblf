@@ -5,6 +5,7 @@ all::  mkdir .WAIT dep .WAIT lib prog
 dep::
 gen::
 test::
+fuzz::
 install:: all
 uninstall::
 clean::

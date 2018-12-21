@@ -48,5 +48,9 @@ Building depends on:
 
  * ar, ld, and a bunch of other stuff you probably already have.
 
+Fuzzing depends on [Radamsa](https://gitlab.com/akihe/radamsa):
+
+  ; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
+
 Ideas, comments or bugs: kate@elide.org
 

@@ -6,7 +6,9 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <ctype.h>
 
 #include <lf/lf.h>
@@ -54,6 +56,11 @@ static int
 print_literal(void *opaque, char c)
 {
 	assert(opaque == NULL);
+
+	if (c == '\n' || c == '\t') {
+		errno = EDOM; /* just to illustrate rejecting a character */
+		return 0;
+	}
 
 	if (isalnum((unsigned char) c) || ispunct((unsigned char) c) || c == ' ') {
 		printf("literal: '%c'\n", c);
@@ -615,17 +622,34 @@ main(int argc, char *argv[])
 	conf.resp_trailer       = print_resp_trailer;
 
 	if (!lf_parse(&conf, NULL, argv[1], &err)) {
-		size_t i;
+		size_t i, z;
 		int r;
 
-		assert(err.p >= argv[1]);
+		z = strlen(argv[1]);
 
-		fprintf(stderr, "error: %s\n", lf_strerror(err.errnum));
+		assert(err.p >= argv[1]);
+		assert(err.n <= z);
+
+		if (err.errnum == LF_ERR_ERRNO && errno == EDOM) {
+			fprintf(stderr, "error: Disallowed character\n");
+		} else {
+			fprintf(stderr, "error: %s\n", lf_strerror(err.errnum));
+		}
 
 		/* note not all directives are exactly one character */
 
 		r = fprintf(stderr, "at %lu: ", err.p - argv[1]);
-		fprintf(stderr, "'%s'\n", argv[1]);
+		fprintf(stderr, "'");
+		z = strlen(argv[1]);
+		for (i = 0; i < z; i++) {
+			unsigned char c = argv[1][i];
+			if (isalnum(c) || ispunct(c) || c == ' ') {
+				fprintf(stderr, "%c", c);
+			} else {
+				fprintf(stderr, "."); /* TODO: would need to lengthen indicator for hex sequences here */
+			}
+		}
+		fprintf(stderr, "'\n");
 
 		for (i = 0; (int) i < r + 1; i++) {
 			fprintf(stderr, "-");
@@ -640,6 +664,7 @@ main(int argc, char *argv[])
 		}
 
 		for (i = 0; i < err.n; i++) {
+			assert(argv[1][i] != '\0');
 			fprintf(stderr, "^");
 		}
 
