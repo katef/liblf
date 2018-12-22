@@ -1,5 +1,6 @@
 .include "../share/mk/top.mk"
 
+FMT += test/pass.fmt
 FMT += test/fail.fmt
 
 .for fmt in ${FMT}

@@ -1,0 +1,61 @@
+literal: 'a'
+literal: 'a'
+literal: 'b'
+literal: 'c'
+literal: '_'
+>ip (client)
+>ip (peer)
+>ip (local)
+>resp_size
+>resp_size_clf
+>req_cookie: VARNAME
+<time_taken (unit=us)
+>env_var: VARNAME
+>filename
+>remote_hostname (hostname_lookups=false)
+>req_header
+>req_header: VARNAME
+>keepalive_reqs
+>remote_logname
+>req_logid
+>req_method
+>note: VARNAME
+>reply_header: VARNAME
+>server_port (canonical)
+>server_port (canonical)
+>server_port (local)
+>server_port (remote)
+>id (pid)
+>id (pid)
+>id (tid)
+>id (hextid)
+>query_string
+<req_first_line
+>resp_handler
+<status
+>strftime: (when=0, fmt=[%d/%b/%Y:%T %z])
+>strftime: (when=0, fmt=fmt)
+>strftime: (when=1, fmt=fmt)
+>strftime: (when=0, fmt=fmt)
+>strftime: (when=0, fmt=%a%A%b%B%c%d%D%e%E%F%G%g%h%H%I%j%k%l%m%M%n%O%P%r%R%s%S%t%T%u%U%V%w%W%x%X%y%z%Z%+%%)
+>strftime: (when=0, fmt=%a, %d %b %y %T %z)
+>time_frac (when=0, unit=s)
+>time_frac (when=0, unit=ms)
+>time_frac (when=0, unit=us)
+>time_frac (when=0, unit=%ms)
+>time_frac (when=0, unit=%us)
+<time_taken (unit=us)
+<time_taken (unit=s)
+<time_taken (unit=ms)
+<time_taken (unit=us)
+<time_taken (unit=s)
+>remote_user
+<url_path
+>server_name: use_canonical_name=true
+>server_name: use_canonical_name=false
+>conn_status
+>bytes_recv
+>bytes_sent
+>bytes_xfer
+>req_trailer: VARNAME
+>resp_trailer: VARNAME
