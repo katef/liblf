@@ -1,16 +1,26 @@
 .include "../share/mk/top.mk"
 
-test:: ${BUILD}/test ${BUILD}/bin/lfdump test/err.fmt test/err.txt
-	for fmt in `cat test/err.fmt`; do \
-		${BUILD}/bin/lfdump "$$fmt" 2>&1 || true; \
-	done \
-	> ${BUILD}/test/err.got
-	diff -u test/err.txt ${BUILD}/test/err.got
+FMT += test/fail.fmt
 
-fuzz:: ${BUILD}/test ${BUILD}/bin/lfdump test/err.fmt
+.for fmt in ${FMT}
+
+test:: ${BUILD}/test ${BUILD}/bin/lfdump ${fmt}
+	cat ${fmt} \
+	| while read -r fmt; do \
+		${BUILD}/bin/lfdump "$$fmt" \
+		|| true; \
+	done \
+	>  ${BUILD}/${fmt:R}.out \
+	2> ${BUILD}/${fmt:R}.err
+	diff -u ${fmt:R}.err ${BUILD}/${fmt:R}.err
+	diff -u ${fmt:R}.out ${BUILD}/${fmt:R}.out
+
+fuzz:: ${BUILD}/test ${BUILD}/bin/lfdump ${fmt}
 .if defined(VERBOSE)
-	BUILD=${BUILD} test/fuzz.sh -v test/err.fmt
+	BUILD=${BUILD} test/fuzz.sh -v ${fmt}
 .else
-	BUILD=${BUILD} test/fuzz.sh test/err.fmt
+	BUILD=${BUILD} test/fuzz.sh ${fmt}
 .endif
+
+.endfor
 
