@@ -299,6 +299,10 @@ notcustom(struct lf_config *conf, void *opaque,
 	case 'X': return conf->conn_status(opaque, pred, redirect);
 	case 'I': return conf->bytes_recv(opaque, pred, redirect);
 	case 'O': return conf->bytes_sent(opaque, pred, redirect);
+	case 'q': return conf->query_string(opaque, pred, redirect);
+	case 'r': return conf->req_first_line(opaque, pred, redirect);
+	case 'R': return conf->resp_handler(opaque, pred, redirect);
+	case 's': return conf->status(opaque, pred, redirect);
 	case 'S': return conf->bytes_xfer(opaque, pred, redirect);
 
 	case '^':
