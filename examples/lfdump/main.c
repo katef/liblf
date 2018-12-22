@@ -582,7 +582,7 @@ main(int argc, char *argv[])
 	conf.identity_check     = 0;
 	conf.use_canonical_name = 0;
 
-	conf.override = "XYZ";
+	conf.override = NULL; /* XXX: "XYZ"; */
 	conf.custom   = custom;
 
 	conf.literal            = print_literal;
