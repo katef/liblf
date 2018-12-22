@@ -213,24 +213,24 @@ notcustom(struct lf_config *conf, void *opaque,
 		if (name->p == NULL) {
 			return conf->server_port(opaque, pred, redirect, LF_PORT_CANONICAL);
 		} else if (nameeq(name->p, name->n, "canonical")) {
-			return conf->ip(opaque, pred, redirect, LF_PORT_CANONICAL);
+			return conf->server_port(opaque, pred, redirect, LF_PORT_CANONICAL);
 		} else if (nameeq(name->p, name->n, "local")) {
-			return conf->ip(opaque, pred, redirect, LF_PORT_LOCAL);
+			return conf->server_port(opaque, pred, redirect, LF_PORT_LOCAL);
 		} else if (nameeq(name->p, name->n, "remote")) {
-			return conf->ip(opaque, pred, redirect, LF_PORT_REMOTE);
+			return conf->server_port(opaque, pred, redirect, LF_PORT_REMOTE);
 		} else {
 			ERR(UNRECOGNISED_PORT_TYPE);
 		}
 
 	case 'P':
 		if (name->p == NULL) {
-			return conf->server_port(opaque, pred, redirect, LF_ID_PID);
+			return conf->id(opaque, pred, redirect, LF_ID_PID);
 		} else if (nameeq(name->p, name->n, "pid")) {
-			return conf->ip(opaque, pred, redirect, LF_ID_PID);
+			return conf->id(opaque, pred, redirect, LF_ID_PID);
 		} else if (nameeq(name->p, name->n, "tid")) {
-			return conf->ip(opaque, pred, redirect, LF_ID_TID);
+			return conf->id(opaque, pred, redirect, LF_ID_TID);
 		} else if (nameeq(name->p, name->n, "hextid")) {
-			return conf->ip(opaque, pred, redirect, LF_ID_HEXTID);
+			return conf->id(opaque, pred, redirect, LF_ID_HEXTID);
 		} else {
 			ERR(UNRECOGNISED_ID_TYPE);
 		}
