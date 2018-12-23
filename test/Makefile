@@ -16,12 +16,12 @@ test:: ${BUILD}/test ${BUILD}/bin/lfdump ${fmt}
 	diff -u ${fmt:R}.err ${BUILD}/${fmt:R}.err
 	diff -u ${fmt:R}.out ${BUILD}/${fmt:R}.out
 
+.endfor
+
 fuzz:: ${BUILD}/test ${BUILD}/bin/lfdump ${fmt}
 .if defined(VERBOSE)
-	BUILD=${BUILD} test/fuzz.sh -v ${fmt}
+	BUILD=${BUILD} test/fuzz.sh -v ${FMT}
 .else
-	BUILD=${BUILD} test/fuzz.sh ${fmt}
+	BUILD=${BUILD} test/fuzz.sh ${FMT}
 .endif
-
-.endfor
 
