@@ -47,7 +47,11 @@ Building depends on:
 
  * ar, ld, and a bunch of other stuff you probably already have.
 
-Fuzzing depends on [Radamsa](https://gitlab.com/akihe/radamsa):
+Fuzzing depends on:
+
+ * [Radamsa](https://gitlab.com/akihe/radamsa)
+ * [Blab](https://github.com/aoh/blab)
+ * [KGT](https://github.com/katef/kgt)
 
     ; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
 

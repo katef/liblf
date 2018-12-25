@@ -21,8 +21,23 @@ if [ "$1" = '-v' ]; then
 	shift
 fi
 
+x=0
 while true; do
-	cat $* | sort -R | head -1 | radamsa -o $BUILD/test/fuzz.fmt
+	case $x in
+	0)
+		x=1
+		# TODO: don't actually want an OCTET here, be more specific
+		(
+			kgt -l iso-ebnf -e blab < doc/logfmt.ebnf;
+			echo 'OCTET=[\x00-\xff] ALPHA=[A-Za-z] DIGIT=[0-9]'
+		) | blab -f 100
+		;;
+	1)
+		x=0
+		cat $BUILD/test/blab.fmt $* | sort -R \ | head -1
+		;;
+	esac | radamsa -o $BUILD/test/fuzz.fmt
+
 	$BUILD/bin/lfdump "`cat $BUILD/test/fuzz.fmt`" \
 		>  $BUILD/test/fuzz.out \
 		2> $BUILD/test/fuzz.err
