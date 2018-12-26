@@ -79,7 +79,9 @@ Fuzzing depends on:
  * [Blab](https://github.com/aoh/blab)
  * [KGT](https://github.com/katef/kgt)
 
-    ; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
+```
+; pmake -r CC=gcc DEBUG=1 && pmake VERBOSE=1 -r fuzz
+```
 
 Ideas, comments or bugs: kate@elide.org
 
