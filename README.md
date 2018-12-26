@@ -6,16 +6,42 @@ user-defined custom formats for log messages. It's intended for logs
 about HTTP traffic, and includes formatting for IP addresses, response
 status, and other relevant things.
 
-This library aims to provide a complete implementation, presenting an
-API independent of any particular source for data, and of any particular
-output. The entry point is lf_parse(), which calls various callbacks as
-it parses each part of the format string. See [<lf.h>](include/lf/lf.h)
-for details.
-
 There's an [EBNF grammar for the syntax](doc/logfmt.ebnf).
 [Apache's documentation](https://httpd.apache.org/docs/current/mod/mod_log_config.html#formats)
 is the authoritative reference for the various format directives.
 
+## What would I use it for?
+
+Maybe you're writing a daemon that serves requests (not necessarily HTTP)
+and you'd like to give your users a familiar-feeling syntax for
+configuring what to log. Or perhaps you're writing a tool to convert
+Apache configurations to another system.
+
+You can disable the directives you don't need, and add custom ones.
+
+## How do I use it?
+
+This library aims to provide a complete implementation, presenting an
+API independent of any particular source for data, and of any particular
+output. The entry point is lf_parse(), which calls various callbacks as
+it parses each part of the format string. See [<lf.h>](include/lf/lf.h)
+for the API.
+
+* As a parser: Have your callbacks store the data,
+  and act on it later.
+* As an interpreter: Parse log format strings whilst serving a request,
+  and have your callbacks output the relevant items immediately.
+* As a compiler: Parse log format strings ahead of time, and output
+  generated code.
+
+There's an example program which just prints out directives as they come.
+You get pretty decent error messages:
+```
+; lfdump '%{}e %v %h %l %u %t \"%r\" %>s %b %{user-agent}i'
+error: Empty name
+at 1: '%{}e %v %h %l %u %t \"%r\" %>s %b %{user-agent}i'
+--------^^
+```
 
 Related projects:
 
